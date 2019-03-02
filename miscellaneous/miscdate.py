@@ -13,15 +13,19 @@ def dtoday(format='%Y%m%d'):
     :param format:  format of output string (ex: '%d-%m-%Y' == '23-02-2019')
     :return:        str date
     """
+    ts = time.time()
+    strdate = date.fromtimestamp(ts).strftime(format)
     return strdate
 
 
 def dconvert(datein, fmtin, fmtout):
     """
     Convert date format into another
-    :param datein:  input string with date
-    :param fmtin:   input format (ex: '%d-%m-%Y' == '23-02-2019')
+    :param datein:  input string of date
+    :param fmtin:   input format (ex: '%Y-%m-%d %H:%M:%S' == '2019-02-23 23:15:55')
     :param fmtout:  output format (ex: '%Y%m%d' == '20190223')
     :return:        str date
     """
+    ts = datetime.datetime.strptime(datein, fmtin).strftime('%s')
+    strdate = date.fromtimestamp(ts).strftime(fmtout)
     return strdate
