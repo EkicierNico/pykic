@@ -8,14 +8,15 @@ import logging
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.1    03/2019
+Release:    V1.2    03/2019
+    - Add distm function
     - Add shpbuf function
     
             V1      02/2019
     - Initialization
 """
 
-def ogreproj (layer, oEPSG):
+def ogreproj(layer, oEPSG):
     """
     Reprojection of an OGR layer
     :param layer:   Geopandas Dataframe OR path of shapefile
@@ -34,7 +35,7 @@ def ogreproj (layer, oEPSG):
     return data_proj
 
 
-def sprocessing (layer1, layer2, method):
+def sprocessing(layer1, layer2, method):
     """
     Geometric processing between shapefiles
     :param layer1:  Geopandas Dataframe 1
@@ -78,3 +79,32 @@ def shpbuf(distance, input, output=None, fmtout=None):
         else:
             logging.error('Warning : output is not a string or ".shp" extension is missing')
     return layerb
+
+
+def distm(lon, lat, units='km'):
+    """
+    Geodesic distance between dots (degrees units)
+    Method : Vincenty (1975)
+    :param lon:     numpy array with at least 2 values (longitude)
+    :param lat:     numpy array with at least 2 values (latitude)
+    :param units:   output units : {'km'=default, 'm'}
+    :return:        distance
+    """
+    radius = 6371009 # meters
+
+    xa = np.deg2rad(lon[0:-1])
+    xb = np.deg2rad(lon[1:])
+    ya = np.deg2rad(lat[0:-1])
+    yb = np.deg2rad(lat[1:])
+
+    s1 = np.sin(ya)*np.sin(yb) + np.cos(ya)*np.cos(yb)*np.cos(xb - xa)
+    s2 = np.arccos(s1)
+
+    if units.lower() == 'km':
+        d = s2 * radius / 1000
+    elif units.lower() == 'm':
+        d = s2 * radius
+    else:
+        logging.error('Warning : output format is not recognized, use default')
+        d = s2 * radius / 1000
+    return d
