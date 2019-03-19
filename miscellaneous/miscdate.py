@@ -4,7 +4,10 @@ from datetime import date
 """
 Dates utilities
 Author:     Nicolas EKICIER
-Release:    V1    03/2019
+Release:    V1.01	03/2019
+				- Resolve bug
+			V1    03/2019
+				- Initialization
 """
 
 def dtoday(format='%Y%m%d'):
@@ -14,7 +17,7 @@ def dtoday(format='%Y%m%d'):
     :return:        str date
     """
     ts = time.time()
-    strdate = date.fromtimestamp(ts).strftime(format)
+    strdate = datetime.datetime.fromtimestamp(ts).strftime(format)
     return strdate
 
 
@@ -27,5 +30,5 @@ def dconvert(datein, fmtin, fmtout):
     :return:        str date
     """
     ts = datetime.datetime.strptime(datein, fmtin).strftime('%s')
-    strdate = date.fromtimestamp(ts).strftime(fmtout)
+    strdate = datetime.datetime.fromtimestamp(ts).strftime(fmtout)
     return strdate
