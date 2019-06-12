@@ -26,18 +26,17 @@ def gdal2array(filepath, sensor='S2'):
     def read(input):
         # Open the file:
         raster = gdal.Open(input)
-        # Projection
+        # Projection & Transform
         proj = raster.GetProjection()
+        transform = raster.GetGeoTransform()
         # Dimensions
         rwidth = raster.RasterXSize
         rheight = raster.RasterYSize
         # Number of bands
         numbands = raster.RasterCount
-        # Metadata for the raster dataset
-        meta = raster.GetMetadata()
         # Read raster data as numeric array from file
         rasterArray = gdal_array.LoadFile(input)
-        return rasterArray, proj, (rwidth, rheight), numbands, meta
+        return rasterArray, proj, (rwidth, rheight), numbands, transform
 
     if os.path.isdir(filepath):
         if sensor.lower() == 's2':
@@ -49,18 +48,51 @@ def gdal2array(filepath, sensor='S2'):
         listf = glob.glob(os.path.join(filepath, '*'+ext), recursive=True)
 
     elif os.path.isfile(filepath):
-        output, proj, dimensions, numbands, meta = read(filepath)
+        output, proj, dimensions, numbands, transform = read(filepath)
 
-    return output, proj, dimensions, numbands, meta
+    return output, proj, dimensions, numbands, transform
 
 
-def makemask(ogr_in, filepath):
+def makemask(ogr_in, filepath, attribute, write=False):
     """
     Build a mask array from an OGR geometry
     :param ogr_in:
     :param filepath:
+    :param attribute:   attribute in OGR table for burn value (string)
+    :param write:       keep mask file on disk (default = False)
     :return:
     """
+    # Define dimensions and NoData value of new raster
+    raster = gdal.Open(filepath)
+
+    rproj = raster.GetProjection()
+    rwidth = raster.RasterXSize
+    rheight = raster.RasterYSize
+
+    transform = raster.GetGeoTransform()
+    xOrigin = transform[0]
+    yOrigin = transform[3]
+    pixel_size = transform[1]
+
+    NoData_value = -9999
+
+    # Open OGR source
+    if os.path.isfile(ogr_in):
+        source_ds = ogr.Open(vector_fn)
+        source_layer = source_ds.GetLayer()
+
+    # Filename of the raster Tiff that will be created
+    raster_fn = 'test.tif'
+
+    # Create the destination data source
+    target_ds = gdal.GetDriverByName('GTiff').Create(raster_fn, rwidth, rheight, 1, gdal.GDT_Byte)
+    # target_ds.SetGeoTransform((xOrigin, pixel_size, 0, yOrigin, 0, -pixel_size))
+    target_ds.SetGeoTransform(transform)
+    band = target_ds.GetRasterBand(1)
+    band.SetNoDataValue(NoData_value)
+
+    # Rasterize
+    gdal.RasterizeLayer(target_ds, [1], source_layer, attribute=attribute)
     return maskarray
 
 
