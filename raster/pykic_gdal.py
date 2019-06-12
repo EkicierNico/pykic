@@ -2,30 +2,27 @@ import os, glob
 from osgeo import gdal, gdal_array
 import pandas as pd
 import numpy as np
-import geopandas as gpd
-from fiona.crs import from_epsg
 import logging
 
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V01    02/2019
+Release:    V1.1    06/2019
+        - Some changes
+        - Add makemask function
+            V1.O    02/2019
+        - Initialization
 """
 
 def gdal2array(filepath, sensor='S2'):
     """
     Read and transform a raster to array
-
-    :param filepath:
+    :param filepath:    - path of file
+                        - folder => only one final product per folder
+                            Example : .SAFE from S2
     :param sensor:      {'S2', 'LS8'}
     :return:            array of raster, projection, dimensions
     """
-    if os.path.isdir(filepath):
-        if sensor.lower() == 's2':
-            ext = '.jp2'
-        elif sensor.lower() == 'ls8':
-            ext = '.tiff'
-
     def read(input):
         # Open the file:
         raster = gdal.Open(input)
@@ -40,7 +37,31 @@ def gdal2array(filepath, sensor='S2'):
         meta = raster.GetMetadata()
         # Read raster data as numeric array from file
         rasterArray = gdal_array.LoadFile(input)
-    return
+        return rasterArray, proj, (rwidth, rheight), numbands, meta
+
+    if os.path.isdir(filepath):
+        if sensor.lower() == 's2':
+            ext = '.jp2'
+            nb_bands = 4 # 4 bands at 10m
+        elif sensor.lower() == 'ls8':
+            ext = '.tif'
+
+        listf = glob.glob(os.path.join(filepath, '*'+ext), recursive=True)
+
+    elif os.path.isfile(filepath):
+        output, proj, dimensions, numbands, meta = read(filepath)
+
+    return output, proj, dimensions, numbands, meta
+
+
+def makemask(ogr_in, filepath):
+    """
+    Build a mask array from an OGR geometry
+    :param ogr_in:
+    :param filepath:
+    :return:
+    """
+    return maskarray
 
 
 def resample_and_reproject(image_in, out_width, out_height, out_geo_transform, out_proj=None, mode='bicubic'):
