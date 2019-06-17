@@ -1,4 +1,4 @@
-import os, glob
+import os, glob, gc
 from osgeo import gdal, gdal_array
 import pandas as pd
 import numpy as np
@@ -14,14 +14,15 @@ Release:    V1.1    06/2019
         - Initialization
 """
 
-def gdal2array(filepath, sensor='S2'):
+def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
     """
     Read and transform a raster to array
     :param filepath:    - path of file
                         - folder => only one final product per folder
                             Example : .SAFE from S2
-    :param sensor:      {'S2', 'LS8'}
-    :return:            array of raster, projection, dimensions
+    :param sensor:      {'S2', 'S2MAJA' (default), 'LS8MAJA', 'LS8'}
+    :param pansharp:    apply pan-sharpening (not possible in 'S2' sensor, default=False)
+    :return:            array of raster, projection, dimensions, transform
     """
     def read(input):
         # Open the file:
@@ -33,24 +34,58 @@ def gdal2array(filepath, sensor='S2'):
         rwidth = raster.RasterXSize
         rheight = raster.RasterYSize
         # Number of bands
-        numbands = raster.RasterCount
+        # numbands = raster.RasterCount
         # Read raster data as numeric array from file
         rasterArray = gdal_array.LoadFile(input)
-        return rasterArray, proj, (rwidth, rheight), numbands, transform
+        return rasterArray, proj, (rwidth, rheight), transform
 
     if os.path.isdir(filepath):
         if sensor.lower() == 's2':
-            ext = '.jp2'
-            nb_bands = 4 # 4 bands at 10m
+            bands = [2, 3, 4, 8] # B,G,R,N
+            ext = 'B0$.jp2'
+        elif sensor.lower() == 's2maja':
+            bands = [2, 3, 4, 8]
+            ext = 'FRE_B$.tif'
+            cld = 'CLM_R1.tif'
+        elif sensor.lower() == 'ls8maja':
+            bands = [2, 3, 4, 5]
+            pan = 'FRE_B8.tif' # panchro
+            cld = 'CLM_R1.tif'
+            ext = 'FRE_B$.tif'
         elif sensor.lower() == 'ls8':
-            ext = '.tif'
+            bands = [2, 3, 4, 5] # B,G,R,N
+            ext = 'B$.TIF'
+            pan = 'B8.TIF' # panchro
 
-        listf = glob.glob(os.path.join(filepath, '*'+ext), recursive=True)
+        workdir = glob.glob(os.path.join(filepath, '**/*'+ext.replace('$', '2')), recursive=True)
+        if not workdir:
+            logging.error('no corresponding files')
+            return None
+        workdir = os.path.dirname(workdir[0])
+
+        output = np.array([])
+        for i in bands:
+            pathf = glob.glob(os.path.join(workdir, '*'+ext.replace('$', str(i))), recursive=False)
+            tmp, proj, dimensions, transform = read(pathf[0])
+            if output.size == 0:
+                output = tmp.copy()
+            else:
+                output= np.dstack((output, tmp.copy()))
+            tmp = None; del tmp
+            gc.collect()
+
+        if sensor.lower().find('maja') >= 0:
+            pathf = glob.glob(os.path.join(workdir, 'MASKS', '*'+cld), recursive=False)
+            tmp, _, _, _ = read(pathf[0])
+            output= np.dstack((output, np.int16(tmp.copy())))
+            tmp = None; del tmp
+            gc.collect()
+
 
     elif os.path.isfile(filepath):
-        output, proj, dimensions, numbands, transform = read(filepath)
+        output, proj, dimensions, transform = read(filepath)
 
-    return output, proj, dimensions, numbands, transform
+    return output, proj, dimensions, transform
 
 
 def makemask(ogr_in, filepath, attribute, write=False):
