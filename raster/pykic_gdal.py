@@ -2,6 +2,7 @@ import os, glob, gc
 from osgeo import gdal, gdal_array
 import pandas as pd
 import numpy as np
+import scipy.misc as spm
 import logging
 
 """
@@ -16,11 +17,11 @@ Release:    V1.1    06/2019
 
 def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
     """
-    Read and transform a raster to array
+    Read and transform a raster to array with bands stacking (Blue, Green, Red, NIR + CLOUDS)
     :param filepath:    - path of file
                         - folder => only one final product per folder
                             Example : .SAFE from S2
-    :param sensor:      {'S2', 'S2MAJA' (default), 'LS8MAJA', 'LS8'}
+    :param sensor:      {'S2', 'S2MAJA' (default), 'LS8MAJA', 'LS8', 'SEN2COR}
     :param pansharp:    apply pan-sharpening (not possible in 'S2' sensor, default=False)
     :return:            array of raster, projection, dimensions, transform
     """
@@ -50,19 +51,26 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
         elif sensor.lower() == 'ls8maja':
             bands = [2, 3, 4, 5]
             pan = 'FRE_B8.tif' # panchro
-            cld = 'CLM_R1.tif'
             ext = 'FRE_B$.tif'
+            cld = 'CLM_R1.tif'
         elif sensor.lower() == 'ls8':
             bands = [2, 3, 4, 5] # B,G,R,N
-            ext = 'B$.TIF'
             pan = 'B8.TIF' # panchro
+            ext = 'B$.TIF'
+            cld = 'fmask.img'
+        elif sensor.lower() == 'sen2cor':
+            bands = [2, 3, 4, 8] # B,G,R,N
+            ext = 'B0$_10m.jp2'
+            cld = 'MSK_CLDPRB_20m.jp2'
 
+        # Define the workspace
         workdir = glob.glob(os.path.join(filepath, '**/*'+ext.replace('$', '2')), recursive=True)
         if not workdir:
-            logging.error('no corresponding files')
+            logging.error(' No corresponding files')
             return None
         workdir = os.path.dirname(workdir[0])
 
+        # Gdal read
         output = np.array([])
         for i in bands:
             pathf = glob.glob(os.path.join(workdir, '*'+ext.replace('$', str(i))), recursive=False)
@@ -74,12 +82,22 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
             tmp = None; del tmp
             gc.collect()
 
-        if sensor.lower().find('maja') >= 0:
-            pathf = glob.glob(os.path.join(workdir, 'MASKS', '*'+cld), recursive=False)
-            tmp, _, _, _ = read(pathf[0])
-            output= np.dstack((output, np.int16(tmp.copy())))
-            tmp = None; del tmp
-            gc.collect()
+        # Cloud mask
+        if sensor.lower().find('maja') >= 0 or sensor.lower() == 'ls8' or sensor.lower() == 'sen2cor':
+            if sensor.lower().find('maja') >= 0:
+                pathc = glob.glob(os.path.join(workdir, 'MASKS', '*'+cld), recursive=False)
+            elif sensor.lower() == 'ls8':
+                pathc = glob.glob(os.path.join(workdir, '*'+cld), recursive=False)
+            elif sensor.lower() == 'sen2cor':
+                pathc = glob.glob(os.path.join(filepath, '**/*'+cld), recursive=True)
+                pathc = os.path.dirname(pathc[0])
+            if os.path.isfile(pathc[0]):
+                tmp, _, _, _ = read(pathc[0])
+                if sensor.lower() == 'sen2cor':
+                    tmp = spm.imresize(tmp, dimensions, interp='nearest')
+                output= np.dstack((output, np.int16(tmp.copy())))
+                tmp = None; del tmp
+                gc.collect()
 
 
     elif os.path.isfile(filepath):
@@ -177,6 +195,6 @@ def resample_and_reproject(image_in, out_width, out_height, out_geo_transform, o
         reproj_res = gdal.ReprojectImage(image_in, out_raster, in_proj, out_proj, mode_gdal)
 
     if reproj_res != 0:
-        logging.error("Error of reprojection/resampled")
+        logging.error(" Error of reprojection/resampled")
         return None
     return out_raster

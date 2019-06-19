@@ -43,7 +43,7 @@ def datefromstr(strin):
     :param strin:   string
     :return:        date string (format YYYYMMDD)
     """
-    info = strin.replace('_', ' ').replace('-', ' ').replace('.', ' ')
+    info = strin.replace('_', ' ').replace('-', ' ').replace('.', ' ').replace('T', ' ')
     info = info.split()
     for i in info:
         if len(i) == 8:
