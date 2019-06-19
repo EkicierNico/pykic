@@ -1,4 +1,12 @@
-"""pykic vegetation indicator module"""
+import os, glob
+import numpy as np
+
+"""
+Vegetation index
+Author:     Nicolas EKICIER
+Release:    V1.0    02/2019
+                - Initialization
+"""
 
 
 def ndvi(nir, red):
