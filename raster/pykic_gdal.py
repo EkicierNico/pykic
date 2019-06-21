@@ -1,5 +1,5 @@
-import os, glob, gc
-from osgeo import gdal, gdal_array
+import os, glob, gc, random, string
+from osgeo import gdal, gdal_array, ogr
 import pandas as pd
 import numpy as np
 import scipy.misc as spm
@@ -8,11 +8,14 @@ import logging
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.1    06/2019
-        - Some changes
-        - Add makemask function
+Release:    V1.11   06/2019
+                - gdal2array :  cloud mask = valid mask (OK = 0, NOK > 0)
+                - makemask :    optimization
+            V1.1    06/2019
+                - Some changes
+                - Add makemask function
             V1.O    02/2019
-        - Initialization
+                - Initialization
 """
 
 def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
@@ -22,21 +25,19 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
                         - folder => only one final product per folder
                             Example : .SAFE from S2
     :param sensor:      {'S2', 'S2MAJA' (default), 'LS8MAJA', 'LS8', 'SEN2COR}
-    :param pansharp:    apply pan-sharpening (not possible in 'S2' sensor, default=False)
+    :param pansharp:    apply pan-sharpening (only possible with Landsat, default=False)
     :return:            array of raster, projection, dimensions, transform
     """
     def read(input):
-        # Open the file:
         raster = gdal.Open(input)
-        # Projection & Transform
+
         proj = raster.GetProjection()
         transform = raster.GetGeoTransform()
-        # Dimensions
+
         rwidth = raster.RasterXSize
         rheight = raster.RasterYSize
-        # Number of bands
         # numbands = raster.RasterCount
-        # Read raster data as numeric array from file
+
         rasterArray = gdal_array.LoadFile(input)
         return rasterArray, proj, (rwidth, rheight), transform
 
@@ -48,11 +49,13 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
             bands = [2, 3, 4, 8]
             ext = 'FRE_B$.tif'
             cld = 'CLM_R1.tif'
+            nodata = 'EDG_R1.tif'
         elif sensor.lower() == 'ls8maja':
             bands = [2, 3, 4, 5]
             pan = 'FRE_B8.tif' # panchro
             ext = 'FRE_B$.tif'
             cld = 'CLM_R1.tif'
+            nodata = 'EDG_R1.tif'
         elif sensor.lower() == 'ls8':
             bands = [2, 3, 4, 5] # B,G,R,N
             pan = 'B8.TIF' # panchro
@@ -82,22 +85,31 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
             tmp = None; del tmp
             gc.collect()
 
-        # Cloud mask
+        # Cloud mask (valid = 0)
         if sensor.lower().find('maja') >= 0 or sensor.lower() == 'ls8' or sensor.lower() == 'sen2cor':
             if sensor.lower().find('maja') >= 0:
                 pathc = glob.glob(os.path.join(workdir, 'MASKS', '*'+cld), recursive=False)
+                pathn = glob.glob(os.path.join(workdir, 'MASKS', '*'+nodata), recursive=False)
+                if os.path.isfile(pathc[0]):
+                    tmp, _, _, _ = read(pathc[0])
+                    tmp2, _, _, _ = read(pathn[0])
+                    tmp[tmp2 == 1] = 1 # Apply nodata in cloud mask
+                    tmp2 = None
             elif sensor.lower() == 'ls8':
                 pathc = glob.glob(os.path.join(workdir, '*'+cld), recursive=False)
+                if os.path.isfile(pathc[0]):
+                    tmp, _, _, _ = read(pathc[0])
+                    tmp[tmp != 1] = 5
+                    tmp[tmp == 1] = 0
             elif sensor.lower() == 'sen2cor':
                 pathc = glob.glob(os.path.join(filepath, '**/*'+cld), recursive=True)
-                pathc = os.path.dirname(pathc[0])
-            if os.path.isfile(pathc[0]):
-                tmp, _, _, _ = read(pathc[0])
-                if sensor.lower() == 'sen2cor':
+                if os.path.isfile(pathc[0]):
+                    tmp, _, _, _ = read(pathc[0])
                     tmp = spm.imresize(tmp, dimensions, interp='nearest')
-                output= np.dstack((output, np.int16(tmp.copy())))
-                tmp = None; del tmp
-                gc.collect()
+
+            output= np.dstack((output, np.int16(tmp.copy())))
+            tmp = None; del tmp
+            gc.collect()
 
 
     elif os.path.isfile(filepath):
@@ -106,17 +118,17 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
     return output, proj, dimensions, transform
 
 
-def makemask(ogr_in, filepath, attribute, write=False):
+def makemask(ogr_in, imgpath, attribute='ID', write=False):
     """
     Build a mask array from an OGR geometry
-    :param ogr_in:
-    :param filepath:
-    :param attribute:   attribute in OGR table for burn value (string)
+    :param ogr_in:      path of shape
+    :param imgpath:     path of image ref
+    :param attribute:   attribute in OGR table for burn value (string, default = 'ID)
     :param write:       keep mask file on disk (default = False)
-    :return:
+    :return maskarray:  mask (array)
     """
-    # Define dimensions and NoData value of new raster
-    raster = gdal.Open(filepath)
+    # Define dimensions and NoData value of new raster (= 0 in MEME method)
+    raster = gdal.Open(imgpath)
 
     rproj = raster.GetProjection()
     rwidth = raster.RasterXSize
@@ -126,26 +138,42 @@ def makemask(ogr_in, filepath, attribute, write=False):
     xOrigin = transform[0]
     yOrigin = transform[3]
     pixel_size = transform[1]
+    raster = None
 
-    NoData_value = -9999
+    NoData_value = -1
 
     # Open OGR source
     if os.path.isfile(ogr_in):
-        source_ds = ogr.Open(vector_fn)
-        source_layer = source_ds.GetLayer()
+        source_ds = ogr.Open(ogr_in)
+        layer = source_ds.GetLayer()
 
-    # Filename of the raster Tiff that will be created
-    raster_fn = 'test.tif'
+    # Create raster
+    if write == True:
+        # Filename of the raster Tiff that will be created
+        chars = string.ascii_lowercase + string.digits + '_'
+        raster_fn = ''.join(random.choice(chars) for _ in range(8))
+        raster_fn = os.path.join(os.getcwd(), raster_fn + '_ogrmask.tif')
 
-    # Create the destination data source
-    target_ds = gdal.GetDriverByName('GTiff').Create(raster_fn, rwidth, rheight, 1, gdal.GDT_Byte)
-    # target_ds.SetGeoTransform((xOrigin, pixel_size, 0, yOrigin, 0, -pixel_size))
+        # Create the destination data source
+        target_ds = gdal.GetDriverByName('GTiff').Create(raster_fn, rwidth, rheight, 1, gdal.GDT_Int16)
+    else:
+        target_ds = gdal.GetDriverByName('MEM').Create('', rwidth, rheight, 1, gdal.GDT_Int16)
+
     target_ds.SetGeoTransform(transform)
-    band = target_ds.GetRasterBand(1)
-    band.SetNoDataValue(NoData_value)
+    target_ds.SetProjection(rproj)
+    target_ds.GetRasterBand(1).SetNoDataValue(NoData_value)
 
     # Rasterize
-    gdal.RasterizeLayer(target_ds, [1], source_layer, attribute=attribute)
+    gdal.RasterizeLayer(target_ds, [1], layer, options=['ATTRIBUTE={0:s}'.format(attribute)])
+
+    # Read mask
+    if write == True:
+        target_ds.FlushCache()
+        maskarray, _, _, _ = gdal2array(raster_fn)
+    else:
+        maskarray = target_ds.GetRasterBand(1).ReadAsArray()
+
+    target_ds = None
     return maskarray
 
 

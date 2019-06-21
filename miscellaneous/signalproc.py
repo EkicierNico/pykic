@@ -1,9 +1,12 @@
 import numpy as np
+from scipy.interpolate import interp1d
 
 """
 Signal processing utilities
 Author:     Nicolas EKICIER
-Release:    V1.01    03/2019
+Release:    V1.1    06/2019
+                - Add fillnan function
+            V1.0    03/2019
 """
 
 def whittf(y, weight=None, beta=1000, order=3):
@@ -27,6 +30,28 @@ def whittf(y, weight=None, beta=1000, order=3):
     pp = np.transpose(p)
     yf = np.linalg.solve(diag + beta*np.dot(p, pp), np.dot(diag, y))
     return yf
+
+
+def fillnan(y, method='linear'):
+    """
+    Interpolation of vector data with nan values
+    Extrema are extrapolated
+    :param y:       vector data
+    :param method:  interpolation method
+                        - 'linear'  default
+                        - 'nearest'
+                        - 'zero', 'slinear', 'quadratic', 'cubic' = spline interpolation of zeroth, first, second or third order
+    :return:        interpolated signal
+    """
+    y = np.ravel(y)
+    x = np.arange(0, len(y))
+
+    igood = np.where(np.isfinite(y))
+    func = interp1d(np.ravel(igood),
+                    np.ravel(y[igood]), # fndvi.iloc[np.ravel(igood), fndvi.columns.get_loc(f)]
+                    fill_value='extrapolate',
+                    kind=method)
+    return func(x)
 
 
 def outliers(input):
