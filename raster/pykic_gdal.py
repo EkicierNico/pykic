@@ -8,7 +8,9 @@ import logging
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.11   06/2019
+Release:    V1.2    06/2019
+                - Add array2tif function
+            V1.11   06/2019
                 - gdal2array :  cloud mask = valid mask (OK = 0, NOK > 0)
                 - makemask :    optimization
             V1.1    06/2019
@@ -118,6 +120,27 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
     return output, proj, dimensions, transform
 
 
+def array2tif(newRasterfn, array, dimensions, transform, proj):
+    """
+    Create a raster (.tif) from numpy array (only one band)
+    :param newRasterfn: output path
+    :param array:       numpy array (input)
+    :param dimensions:  dimensions of output (cols, rows)
+    :param transform:   transform struct from gdal method
+    :param proj:        projection struc from gdal method
+    :return:
+    """
+    outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], 1, gdal.GDT_Byte)
+    outRaster.SetGeoTransform(transform)
+    outband = outRaster.GetRasterBand(1)
+    outband.WriteArray(array)
+    outRaster.SetProjection(proj)
+
+    outband.FlushCache()
+    outRaster = None
+    return None
+
+
 def makemask(ogr_in, imgpath, attribute='ID', write=False):
     """
     Build a mask array from an OGR geometry
@@ -161,14 +184,15 @@ def makemask(ogr_in, imgpath, attribute='ID', write=False):
 
     target_ds.SetGeoTransform(transform)
     target_ds.SetProjection(rproj)
-    target_ds.GetRasterBand(1).SetNoDataValue(NoData_value)
+    outband = target_ds.GetRasterBand(1)
+    outband.SetNoDataValue(NoData_value)
 
     # Rasterize
     gdal.RasterizeLayer(target_ds, [1], layer, options=['ATTRIBUTE={0:s}'.format(attribute)])
 
     # Read mask
     if write == True:
-        target_ds.FlushCache()
+        outband.FlushCache()
         maskarray, _, _, _ = gdal2array(raster_fn)
     else:
         maskarray = target_ds.GetRasterBand(1).ReadAsArray()
