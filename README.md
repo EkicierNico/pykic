@@ -1,4 +1,4 @@
-![Map](/home/nicolas.ekicier/Téléchargements/map.png "Map from Sentinel2 Timeserie")
+![Map](https://github.com/EkicierNico/pykic/blob/master/map.png "Map from Sentinel2 Timeserie")
 
 # pykic module
 ## Python functions for a remote sensing application.
