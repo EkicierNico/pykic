@@ -1,10 +1,14 @@
 import numpy as np
+# import scipy.misc as spm
+import PIL.Image as pilim
 import logging
 
 """
 Resampling & Filtering utilities
 Author:     Nicolas EKICIER
-Release:    V1    03/2019
+Release:    V1.1    06/2019
+                - Add resizing method
+            V1.0    03/2019
 """
 
 def pan_sharpen(input, sharp_param):
@@ -17,10 +21,10 @@ def pan_sharpen(input, sharp_param):
     :return:                    panchromatic band
     :rtype:                     numpy array
     """
-    # checks
+    # Checks
     if input.shape != sharp_param.shape:
-        logging.error("shape mismatch between array to sharpen and sharpening parameters")
-        return None
+        input = np.array(pilim.fromarray(input).resize(sharp_param.shape,
+                                                       resample=pilim.NEAREST))
 
     out_array = np.zeros(input.shape)
     for i in range(0, input.shape[0]-1, 2):

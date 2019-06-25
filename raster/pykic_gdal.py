@@ -2,8 +2,11 @@ import os, glob, gc, random, string
 from osgeo import gdal, gdal_array, ogr
 import pandas as pd
 import numpy as np
-import scipy.misc as spm
 import logging
+
+# import scipy.misc as spm
+import PIL.Image as pilim
+import raster.resafilter as rrf
 
 """
 RASTER utilities
@@ -75,15 +78,27 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
             return None
         workdir = os.path.dirname(workdir[0])
 
+        # Pan-Sharpening (read panchromatic band)
+        if sensor.lower().find('ls8') and pansharp == True:
+            pathp = glob.glob(os.path.join(workdir, '*'+pan), recursive=False)
+            panchro, projp, dimensionsp, transformp = read(pathp[0])
+
         # Gdal read
         output = np.array([])
         for i in bands:
             pathf = glob.glob(os.path.join(workdir, '*'+ext.replace('$', str(i))), recursive=False)
             tmp, proj, dimensions, transform = read(pathf[0])
             if output.size == 0:
-                output = tmp.copy()
+                # Pan-Sharpening
+                if sensor.lower().find('ls8') and pansharp == True:
+                    output = rrf.pan_sharpen(tmp.copy(), panchro)
+                else:
+                    output = tmp.copy()
             else:
-                output= np.dstack((output, tmp.copy()))
+                if sensor.lower().find('ls8') and pansharp == True:
+                    output= np.dstack((output, rrf.pan_sharpen(tmp.copy(), panchro)))
+                else:
+                    output= np.dstack((output, tmp.copy()))
             tmp = None; del tmp
             gc.collect()
 
@@ -107,22 +122,31 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
                 pathc = glob.glob(os.path.join(filepath, '**/*'+cld), recursive=True)
                 if os.path.isfile(pathc[0]):
                     tmp, _, _, _ = read(pathc[0])
-                    tmp = spm.imresize(tmp, dimensions, interp='nearest')
+                    # tmp = spm.imresize(tmp, dimensions, interp='nearest')
+                    tmp = np.array(pilim.fromarray(tmp).resize(dimensions,
+                                                               resample=pilim.NEAREST))
 
-            output= np.dstack((output, np.int16(tmp.copy())))
+            if sensor.lower().find('ls8') and pansharp == True:
+                output= np.dstack((output, np.int16(np.array(pilim.fromarray(tmp.copy()).resize(dimensionsp,
+                                                                                                resample=pilim.NEAREST)))))
+            else:
+                output= np.dstack((output, np.int16(tmp.copy())))
             tmp = None; del tmp
             gc.collect()
-
 
     elif os.path.isfile(filepath):
         output, proj, dimensions, transform = read(filepath)
 
-    return output, proj, dimensions, transform
+    # Return
+    if sensor.lower().find('ls8') and pansharp == True:
+        return output, projp, dimensionsp, transformp
+    else:
+        return output, proj, dimensions, transform
 
 
 def array2tif(newRasterfn, array, dimensions, transform, proj):
     """
-    Create a raster (.tif) from numpy array (only one band)
+    Create a raster (.tif) from numpy array (only one band) --> uint8
     :param newRasterfn: output path
     :param array:       numpy array (input)
     :param dimensions:  dimensions of output (cols, rows)
@@ -170,6 +194,11 @@ def makemask(ogr_in, imgpath, attribute='ID', write=False):
         source_ds = ogr.Open(ogr_in)
         layer = source_ds.GetLayer()
 
+    # Check if projections are same
+    if layer.GetSpatialRef().ExportToWkt() != rproj:
+        logging.error(' Warning : CRS are not the same')
+        return None
+
     # Create raster
     if write == True:
         # Filename of the raster Tiff that will be created
@@ -201,40 +230,38 @@ def makemask(ogr_in, imgpath, attribute='ID', write=False):
     return maskarray
 
 
-def resample_and_reproject(image_in, out_width, out_height, out_geo_transform, out_proj=None, mode='bicubic'):
+def resample_and_reproject(image_in, dim, out_geo_transform, out_proj=None, mode='lanczos'):
     """
     Resample and reproject a raster
 
-    :param image_in: input raster
-    :param out_width: pixel width of the output raster
-    :param out_height: pixel height of the output raster
-    :param out_geo_transform: GeoTransform of the output raster
-    :param out_proj: output projection (default to input projection)
-    :param mode: interpolation mode ['bicubic' (default), 'average', 'bilinear', 'lanczos' or 'nearest']
-    :type image_in: ``ogr.DataSet``
-    :type out_width: int
-    :type out_height: int
-    :type out_geo_transform: tuple of floats
-    :type out_proj: string
-    :type mode: string
-    :return: the reprojected and resampled raster, None otherwise
-    :rtype: ``gdal.DataSet``
+    :param image_in:            input raster
+    :param dim:                 output dimensions (width, height)
+    :param out_geo_transform:   GeoTransform of the output raster
+    :param out_proj:            output projection (default to input projection)
+    :param mode:                interpolation mode ['bicubic', 'average', 'bilinear', 'lanczos' (default) or 'nearest']
+    :type image_in:             ``ogr.DataSet``
+    :type dim:                  tuple of int
+    :type out_geo_transform:    tuple of floats
+    :type out_proj:             string (ex : 'EPSG:4326')
+    :type mode:                 string
+    :return:                    the reprojected and resampled raster, None otherwise
+    :rtype: `                   `gdal.DataSet``
     """
     if isinstance(image_in, str):
         image_in = gdal.Open(image_in)
     in_proj = image_in.GetProjection()
 
-    out_raster = gdal.GetDriverByName('MEM').Create("", out_width, out_height, image_in.RasterCount,
+    out_raster = gdal.GetDriverByName('MEM').Create("", dim[0, dim[1]], image_in.RasterCount,
                                                     image_in.GetRasterBand(1).DataType)
     out_raster.SetGeoTransform(out_geo_transform)
 
-    mode_gdal = gdal.GRA_Cubic
+    mode_gdal = gdal.GRA_Lanczos
     if mode.lower() == 'average':
         mode_gdal = gdal.GRA_Average
     elif mode.lower() == 'bilinear':
         mode_gdal = gdal.GRA_Bilinear
-    elif mode.lower() == 'lanczos':
-        mode_gdal = gdal.GRA_Lanczos
+    elif mode.lower() == 'bicubic':
+        mode_gdal = gdal.GRA_Cubic
     elif mode.lower() == 'nearest':
         mode_gdal = gdal.GRA_NearestNeighbour
 

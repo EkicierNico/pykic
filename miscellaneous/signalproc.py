@@ -58,7 +58,7 @@ def outliers(input):
     """
     Extract index of outliers in input
     :param input:   vector data (signal)
-    :return:        index
+    :return:        index, whisker inf & sup
     """
     Quart = np.percentile(input, [25, 75])  # 1er et 3ème quartile
     IQuart = Quart[1] - Quart[0]    # interquartile
@@ -66,4 +66,4 @@ def outliers(input):
     winf = Quart[0] - 1.5 * IQuart  # whisker inf
 
     idx = np.flatnonzero((input < winf) | (input > wsup))
-    return idx
+    return idx, winf, wsup
