@@ -11,7 +11,7 @@ Release:    V1.1    06/2019
 
 def whittf(y, weight=None, beta=1000, order=3):
     """
-    Whittaker smoothing
+    Wheighted Whittaker smoothing
     :param y:       vector data (signal)
     :param weight:  weights of each sample (one by default)
     :param beta:    penalization parameter (> 0)

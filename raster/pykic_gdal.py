@@ -167,7 +167,7 @@ def array2tif(newRasterfn, array, dimensions, transform, proj):
 
 def makemask(ogr_in, imgpath, attribute='ID', write=False):
     """
-    Build a mask array from an OGR geometry
+    Build a mask array from an OGR geometry --> Int16
     :param ogr_in:      path of shape
     :param imgpath:     path of image ref
     :param attribute:   attribute in OGR table for burn value (string, default = 'ID)
@@ -251,7 +251,7 @@ def resample_and_reproject(image_in, dim, out_geo_transform, out_proj=None, mode
         image_in = gdal.Open(image_in)
     in_proj = image_in.GetProjection()
 
-    out_raster = gdal.GetDriverByName('MEM').Create("", dim[0, dim[1]], image_in.RasterCount,
+    out_raster = gdal.GetDriverByName('MEM').Create("", dim[0], dim[1], image_in.RasterCount,
                                                     image_in.GetRasterBand(1).DataType)
     out_raster.SetGeoTransform(out_geo_transform)
 
