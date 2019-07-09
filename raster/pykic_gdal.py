@@ -4,14 +4,15 @@ import pandas as pd
 import numpy as np
 import logging
 
-# import scipy.misc as spm
 import PIL.Image as pilim
 import raster.resafilter as rrf
 
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.2    06/2019
+Release:    V1.21   07/2019
+                - Change in gdal2array (nband parameter)
+            V1.2    06/2019
                 - Add array2tif function
             V1.11   06/2019
                 - gdal2array :  cloud mask = valid mask (OK = 0, NOK > 0)
@@ -23,17 +24,19 @@ Release:    V1.2    06/2019
                 - Initialization
 """
 
-def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
+def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
     """
     Read and transform a raster to array with bands stacking (Blue, Green, Red, NIR + CLOUDS)
     :param filepath:    - path of file
                         - folder => only one final product per folder
                             Example : .SAFE from S2
+    :param nband:       number of band (only if filepath is not a folder)
+                        if None, all bands are read
     :param sensor:      {'S2', 'S2MAJA' (default), 'LS8MAJA', 'LS8', 'SEN2COR}
     :param pansharp:    apply pan-sharpening (only possible with Landsat, default=False)
     :return:            array of raster, projection, dimensions, transform
     """
-    def read(input):
+    def read(input, nband):
         raster = gdal.Open(input)
 
         proj = raster.GetProjection()
@@ -43,7 +46,11 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
         rheight = raster.RasterYSize
         # numbands = raster.RasterCount
 
-        rasterArray = gdal_array.LoadFile(input)
+        if nband:
+            tmpband = raster.GetRasterBand(nband)
+            rasterArray = tmpband.ReadAsArray()
+        else:
+            rasterArray = gdal_array.LoadFile(input)
         return rasterArray, proj, (rwidth, rheight), transform
 
     if os.path.isdir(filepath):
@@ -122,7 +129,6 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
                 pathc = glob.glob(os.path.join(filepath, '**/*'+cld), recursive=True)
                 if os.path.isfile(pathc[0]):
                     tmp, _, _, _ = read(pathc[0])
-                    # tmp = spm.imresize(tmp, dimensions, interp='nearest')
                     tmp = np.array(pilim.fromarray(tmp).resize(dimensions,
                                                                resample=pilim.NEAREST))
 
@@ -135,7 +141,7 @@ def gdal2array(filepath, sensor='S2MAJA', pansharp=False):
             gc.collect()
 
     elif os.path.isfile(filepath):
-        output, proj, dimensions, transform = read(filepath)
+        output, proj, dimensions, transform = read(filepath, nband)
 
     # Return
     if sensor.lower().find('ls8') and pansharp == True:
@@ -151,7 +157,7 @@ def array2tif(newRasterfn, array, dimensions, transform, proj):
     :param array:       numpy array (input)
     :param dimensions:  dimensions of output (cols, rows)
     :param transform:   transform struct from gdal method
-    :param proj:        projection struc from gdal method
+    :param proj:        projection struct from gdal method
     :return:
     """
     outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], 1, gdal.GDT_Byte)
