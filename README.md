@@ -18,5 +18,5 @@
 - _database.py_ : database utilities
 - _miscdate.py_ : functions to manipulate dates, extract it from string etc...
 - _plotik.py_ : plotting utilities
-- _signalproc.py_ : signal processing (smoothing, interpolation, outliers etc...)
+- _signalproc.py_ : signal processing (smoothing, interpolation, outliers, phenological metrics etc...)
 - _vi.py_ : compute vegetation index
