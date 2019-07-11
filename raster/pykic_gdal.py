@@ -11,6 +11,7 @@ import raster.resafilter as rrf
 RASTER utilities
 Author:     Nicolas EKICIER
 Release:    V1.21   07/2019
+                - Add geoinfo function
                 - Change in gdal2array (nband parameter)
             V1.2    06/2019
                 - Add array2tif function
@@ -46,7 +47,7 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
         rheight = raster.RasterYSize
         # numbands = raster.RasterCount
 
-        if nband:
+        if nband is not None:
             tmpband = raster.GetRasterBand(nband)
             rasterArray = tmpband.ReadAsArray()
         else:
@@ -150,14 +151,30 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
         return output, proj, dimensions, transform
 
 
-def array2tif(newRasterfn, array, dimensions, transform, proj):
+def geoinfo(filepath):
+    """
+    Extract structure geoinfo from gdal
+    :param filepath:    path of raster file
+    :return:            proj, dimensions, transform
+    """
+    raster = gdal.Open(filepath)
+
+    proj = raster.GetProjection()
+    transform = raster.GetGeoTransform()
+
+    rwidth = raster.RasterXSize
+    rheight = raster.RasterYSize
+    return proj, (rwidth, rheight), transform
+
+
+def array2tif(newRasterfn, array, proj, dimensions, transform):
     """
     Create a raster (.tif) from numpy array (only one band) --> uint8
     :param newRasterfn: output path
     :param array:       numpy array (input)
+    :param proj:        projection struct from gdal method
     :param dimensions:  dimensions of output (cols, rows)
     :param transform:   transform struct from gdal method
-    :param proj:        projection struct from gdal method
     :return:
     """
     outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], 1, gdal.GDT_Byte)
