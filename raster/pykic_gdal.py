@@ -198,13 +198,11 @@ def makemask(ogr_in, imgpath, attribute='ID', write=False):
     :return maskarray:  mask (array)
     """
     # Define dimensions and NoData value of new raster (= 0 in MEME method)
-    raster = gdal.Open(imgpath)
+    rproj, dim, transform = geoinfo(imgpath)
 
-    rproj = raster.GetProjection()
-    rwidth = raster.RasterXSize
-    rheight = raster.RasterYSize
+    rwidth = dim[0]
+    rheight = dim[1]
 
-    transform = raster.GetGeoTransform()
     xOrigin = transform[0]
     yOrigin = transform[3]
     pixel_size = transform[1]
