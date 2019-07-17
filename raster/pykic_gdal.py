@@ -89,13 +89,13 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
         # Pan-Sharpening (read panchromatic band)
         if sensor.lower().find('ls8') and pansharp == True:
             pathp = glob.glob(os.path.join(workdir, '*'+pan), recursive=False)
-            panchro, projp, dimensionsp, transformp = read(pathp[0])
+            panchro, projp, dimensionsp, transformp = read(pathp[0], nband)
 
         # Gdal read
         output = np.array([])
         for i in bands:
             pathf = glob.glob(os.path.join(workdir, '*'+ext.replace('$', str(i))), recursive=False)
-            tmp, proj, dimensions, transform = read(pathf[0])
+            tmp, proj, dimensions, transform = read(pathf[0], nband)
             if output.size == 0:
                 # Pan-Sharpening
                 if sensor.lower().find('ls8') and pansharp == True:
@@ -116,20 +116,20 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
                 pathc = glob.glob(os.path.join(workdir, 'MASKS', '*'+cld), recursive=False)
                 pathn = glob.glob(os.path.join(workdir, 'MASKS', '*'+nodata), recursive=False)
                 if os.path.isfile(pathc[0]):
-                    tmp, _, _, _ = read(pathc[0])
-                    tmp2, _, _, _ = read(pathn[0])
+                    tmp, _, _, _ = read(pathc[0], nband)
+                    tmp2, _, _, _ = read(pathn[0], nband)
                     tmp[tmp2 == 1] = 1 # Apply nodata in cloud mask
                     tmp2 = None
             elif sensor.lower() == 'ls8':
                 pathc = glob.glob(os.path.join(workdir, '*'+cld), recursive=False)
                 if os.path.isfile(pathc[0]):
-                    tmp, _, _, _ = read(pathc[0])
+                    tmp, _, _, _ = read(pathc[0], nband)
                     tmp[tmp != 1] = 5
                     tmp[tmp == 1] = 0
             elif sensor.lower() == 'sen2cor':
                 pathc = glob.glob(os.path.join(filepath, '**/*'+cld), recursive=True)
                 if os.path.isfile(pathc[0]):
-                    tmp, _, _, _ = read(pathc[0])
+                    tmp, _, _, _ = read(pathc[0], nband)
                     tmp = np.array(pilim.fromarray(tmp).resize(dimensions,
                                                                resample=pilim.NEAREST))
 
