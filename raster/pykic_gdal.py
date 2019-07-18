@@ -130,12 +130,10 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
                 pathc = glob.glob(os.path.join(filepath, '**/*'+cld), recursive=True)
                 if os.path.isfile(pathc[0]):
                     tmp, _, _, _ = read(pathc[0], nband)
-                    tmp = np.array(pilim.fromarray(tmp).resize(dimensions,
-                                                               resample=pilim.NEAREST))
+                    tmp = rrf.resample_2d(tmp, dimensions, method='nearest')
 
             if sensor.lower().find('ls8') and pansharp == True:
-                output= np.dstack((output, np.int16(np.array(pilim.fromarray(tmp.copy()).resize(dimensionsp,
-                                                                                                resample=pilim.NEAREST)))))
+                output= np.dstack((output, np.int16(rrf.resample_2d(tmp.copy(), dimensionsp, method='nearest'))))
             else:
                 output= np.dstack((output, np.int16(tmp.copy())))
             tmp = None; del tmp
