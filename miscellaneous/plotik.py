@@ -67,27 +67,27 @@ def plot_confusion_matrix(y_true, y_pred,
         id = []
         for i in classes:
             test = np.flatnonzero(labels.iloc[:,-1] == i)
-            if test:
+            if test.size != 0:
                 id.append(int(test))
         labels = list(labels.iloc[id, 0])
     else:
         labels = classes
 
     fig = plt.figure(figsize=(12,9))
-    ax = fig.subplots()
-    im = ax.imshow(cm, interpolation='nearest', cmap=plt.get_cmap(cmap))
+    ax = plt.gca()
+    im = ax.imshow(cm, interpolation='nearest', aspect='equal', origin='lower', cmap=plt.get_cmap(cmap))
     ax.figure.colorbar(im, ax=ax)
-    ax.xaxis.tick_top()
+    # ax.xaxis.tick_top()
 
-    ax.set(xticks=np.arange(cm.shape[1]),
-           yticks=np.arange(cm.shape[0]),
+    ax.set(xticks=np.arange(len(labels)),
+           yticks=np.arange(len(labels)),
            xticklabels=labels, yticklabels=labels,
            title=title,
            ylabel='True label',
            xlabel='Predicted label')
 
     # Rotate the tick labels and set their alignment.
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="left",
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
              rotation_mode="anchor")
 
     # Loop over data dimensions and create text annotations.
