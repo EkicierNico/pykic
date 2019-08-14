@@ -7,7 +7,9 @@ from scipy.signal import find_peaks
 """
 Signal processing utilities
 Author:     Nicolas EKICIER
-Release:    V1.2    07/2019
+Release:    V1.3    08/2019
+                - Changes for nanpercentile in outliers function
+            V1.2    07/2019
                 - Changes : fillnan function becomes fillnan_and_resample
                 - Add phen_met function
                 - Change beta to '100' in whittf
@@ -66,10 +68,11 @@ def fillnan_and_resample(y, x=None, method='linear'):
 def outliers(input):
     """
     Extract index and values of outliers in input
+    Works with NaN values
     :param input:   vector data (signal)
     :return:        index, (whisker inf, sup)
     """
-    Quart = np.percentile(input, [25, 75])  # 1er et 3ème quartile
+    Quart = np.nanpercentile(input, [25, 75])  # 1er et 3ème quartile
     IQuart = Quart[1] - Quart[0]    # interquartile
     wsup = Quart[1] + 1.5 * IQuart  # whisker sup
     winf = Quart[0] - 1.5 * IQuart  # whisker inf
