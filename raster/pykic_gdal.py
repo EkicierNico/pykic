@@ -10,7 +10,9 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.21   07/2019
+Release:    V1.3   08/2019
+                - Add format parameter in array2tif
+            V1.21   07/2019
                 - Add geoinfo function
                 - Change in gdal2array (nband parameter)
             V1.2    06/2019
@@ -165,17 +167,25 @@ def geoinfo(filepath):
     return proj, (rwidth, rheight), transform
 
 
-def array2tif(newRasterfn, array, proj, dimensions, transform):
+def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8'):
     """
-    Create a raster (.tif) from numpy array (only one band) --> uint8
+    Create a raster (.tif) from numpy array (only one band)
     :param newRasterfn: output path
     :param array:       numpy array (input)
     :param proj:        projection struct from gdal method
     :param dimensions:  dimensions of output (cols, rows)
     :param transform:   transform struct from gdal method
+    :param format:      {'uint8' --> default, 'uint16', 'int16'}
     :return:
     """
-    outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], 1, gdal.GDT_Byte)
+    if format.lower() == 'uint8':
+        gdt = gdal.GDT_Byte
+    elif format.lower() == 'uint16':
+        gdt = gdal.GDT_UInt16
+    elif format.lower() == 'int16':
+        gdt = gdal.GDT_Int16
+
+    outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], 1, gdt)
     outRaster.SetGeoTransform(transform)
     outband = outRaster.GetRasterBand(1)
     outband.WriteArray(array)
