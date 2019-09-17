@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.31   08/2019
+Release:    V1.32   09/2019
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -194,7 +194,7 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8'):
 
 def makemask(ogr_in, imgpath, attribute='ID', write=False):
     """
-    Build a mask array from an OGR geometry --> Int16
+    Build a mask array from an OGR geometry --> Int32
     :param ogr_in:      path of shape
     :param imgpath:     path of image ref
     :param attribute:   attribute in OGR table for burn value (string, default = 'ID)
@@ -232,9 +232,9 @@ def makemask(ogr_in, imgpath, attribute='ID', write=False):
         raster_fn = os.path.join(os.getcwd(), raster_fn + '_ogrmask.tif')
 
         # Create the destination data source
-        target_ds = gdal.GetDriverByName('GTiff').Create(raster_fn, rwidth, rheight, 1, gdal.GDT_Int16)
+        target_ds = gdal.GetDriverByName('GTiff').Create(raster_fn, rwidth, rheight, 1, gdal.GDT_Int32)
     else:
-        target_ds = gdal.GetDriverByName('MEM').Create('', rwidth, rheight, 1, gdal.GDT_Int16)
+        target_ds = gdal.GetDriverByName('MEM').Create('', rwidth, rheight, 1, gdal.GDT_Int32)
 
     target_ds.SetGeoTransform(transform)
     target_ds.SetProjection(rproj)
