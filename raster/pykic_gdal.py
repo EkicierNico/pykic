@@ -1,4 +1,4 @@
-import os, glob, gc, random, string
+import os, glob, gc, random, string, osr
 from osgeo import gdal, gdal_array, ogr
 import pandas as pd
 import numpy as np
@@ -10,21 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.3   08/2019
-                - Add format parameter in array2tif
-            V1.21   07/2019
-                - Add geoinfo function
-                - Change in gdal2array (nband parameter)
-            V1.2    06/2019
-                - Add array2tif function
-            V1.11   06/2019
-                - gdal2array :  cloud mask = valid mask (OK = 0, NOK > 0)
-                - makemask :    optimization
-            V1.1    06/2019
-                - Some changes
-                - Add makemask function
-            V1.O    02/2019
-                - Initialization
+Release:    V1.31   08/2019
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -151,20 +137,30 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
         return output, proj, dimensions, transform
 
 
-def geoinfo(filepath):
+def geoinfo(filepath, onlyepsg=False):
     """
     Extract structure geoinfo from gdal
-    :param filepath:    path of raster file
-    :return:            proj, dimensions, transform
+    :param filepath:    path of raster file (ogr file only possible with onlyepsg=True)
+    :param onlyepsg:    to extract only the EPSG code
+    :return:            proj, dimensions, transform OR EPSG
     """
-    raster = gdal.Open(filepath)
+    if onlyepsg == True:
+        try:
+            source_ds = ogr.Open(filepath)
+            layer = source_ds.GetLayer().GetSpatialRef()
+            epsg = layer.GetAuthorityCode(None)
+        except:
+            raster = gdal.Open(filepath)
+            epsg = osr.SpatialReference(wkt=raster.GetProjection()).GetAttrValue('AUTHORITY', 1)
+        return epsg
+    else:
+        raster = gdal.Open(filepath)
 
-    proj = raster.GetProjection()
-    transform = raster.GetGeoTransform()
-
-    rwidth = raster.RasterXSize
-    rheight = raster.RasterYSize
-    return proj, (rwidth, rheight), transform
+        proj = raster.GetProjection()
+        transform = raster.GetGeoTransform()
+        rwidth = raster.RasterXSize
+        rheight = raster.RasterYSize
+        return proj, (rwidth, rheight), transform
 
 
 def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8'):
@@ -224,7 +220,7 @@ def makemask(ogr_in, imgpath, attribute='ID', write=False):
         layer = source_ds.GetLayer()
 
     # Check if projections are same
-    if layer.GetSpatialRef().ExportToWkt() != rproj:
+    if geoinfo(ogr_in, onlyepsg=True) != geoinfo(imgpath, onlyepsg=True):
         logging.error(' Warning : CRS are not the same')
         return None
 
