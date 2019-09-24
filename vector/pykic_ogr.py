@@ -10,7 +10,7 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.4    09/2019
+Release:    V1.41    09/2019
 """
 
 def zonstat(inshp, inimg, attribut='id'):
@@ -58,7 +58,7 @@ def checkproj(layer0, layer1):
     with fiona.open(layer1, 'r') as src1:
         proj1 = src1.crs['init']
 
-    if proj0 is not proj1:
+    if proj0.lower() != proj1.lower():
         return False
     else:
         return True
