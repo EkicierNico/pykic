@@ -10,7 +10,7 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.41    09/2019
+Release:    V1.42    09/2019
 """
 
 def zonstat(inshp, inimg, attribut='id'):
@@ -51,7 +51,7 @@ def checkproj(layer0, layer1):
     Check if projections are the same
     :param layer0:  path of shapefile 1
     :param layer1:  path of shapefile 2
-    :return:        booleen
+    :return:        booleen and EPSG of each layer
     """
     with fiona.open(layer0, 'r') as src0:
         proj0 = src0.crs['init']
@@ -59,20 +59,22 @@ def checkproj(layer0, layer1):
         proj1 = src1.crs['init']
 
     if proj0.lower() != proj1.lower():
-        return False
+        check = False
+        return check, proj0, proj1
     else:
-        return True
+        check = True
+        return check, proj0, proj1
 
 
-def ogreproj(layer, oEPSG):
+def ogreproj(player, oEPSG, write=False):
     """
     Reprojection of an OGR layer
-    :param layer:   Geopandas Dataframe OR path of shapefile
+    :param layer:   Path of shapefile
     :param oEPSG:   EPSG value for destination (int)
+    :param write:   if write, output is written on disk (same path of player with suffix)
     :return:        Reprojected layer
     """
-    if type(layer) is str:
-        layer = gpd.read_file(layer)
+    layer = gpd.read_file(player)
 
     iEPSG = layer.crs # Get projection from input and print in console
     print('Reprojection from {0:s} to epsg:{1:d}'.format(iEPSG['init'], oEPSG))
@@ -80,6 +82,9 @@ def ogreproj(layer, oEPSG):
     data_proj = layer.copy()
     data_proj = data_proj.to_crs(epsg=oEPSG) # Reproject the geometries by replacing the values with projected ones
     data_proj.crs = from_epsg(oEPSG) # Determine the CRS of the GeoDataFrame
+
+    if write:
+        data_proj.to_file(player.replace('.shp', '_{0:d}.shp'.format(oEPSG)))
     return data_proj
 
 
@@ -97,7 +102,8 @@ def sprocessing(layer1, layer2, method):
         lay2 = gpd.read_file(layer2)
 
     # Check if projections are same
-    if not checkproj(layer1, layer2):
+    check, _, _ = checkproj(layer1, layer2)
+    if not check:
         logging.error('Warning : CRS are not the same')
         return None
 
