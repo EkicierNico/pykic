@@ -10,7 +10,7 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.42    09/2019
+Release:    V1.43    10/2019
 """
 
 def zonstat(inshp, inimg, attribut='id'):
@@ -60,10 +60,10 @@ def checkproj(layer0, layer1):
 
     if proj0.lower() != proj1.lower():
         check = False
-        return check, proj0, proj1
     else:
         check = True
-        return check, proj0, proj1
+
+    return check, proj0, proj1
 
 
 def ogreproj(player, oEPSG, write=False):

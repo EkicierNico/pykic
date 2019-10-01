@@ -1,18 +1,10 @@
-import time, datetime
+import time, datetime, logging
 from datetime import date
-import logging
 
 """
 Dates utilities
 Author:     Nicolas EKICIER
-Release:    V1.11   07/2019
-                - Add timestamp format as in/output
-            V1.1    06/2019
-                - Add datefromstr function
-            V1.01	03/2019
-				- Resolve bug
-			V1    03/2019
-				- Initialization
+Release:    V1.12   09/2019
 """
 
 def dtoday(format='%Y%m%d'):
@@ -38,7 +30,7 @@ def dconvert(datein, fmtin, fmtout):
                     'ts' = timestamp
     :param fmtout:  output format (ex: '%Y%m%d' == '20190223')
                     'ts' = timestamp
-    :return:        str date
+    :return:        str date or ts
     """
     if fmtin.lower() == 'ts':
         ts = datein
