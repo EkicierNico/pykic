@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.32   09/2019
+Release:    V1.33   10/2019
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -116,9 +116,13 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
                     tmp[tmp == 1] = 0
             elif sensor.lower() == 'sen2cor':
                 pathc = glob.glob(os.path.join(filepath, '**/*'+cld), recursive=True)
+                pathn = glob.glob(os.path.join(workdir, '*'+ext.replace('$', str(2))), recursive=False)
                 if os.path.isfile(pathc[0]):
                     tmp, _, _, _ = read(pathc[0], nband)
+                    tmp2, _, _, _ = read(pathn[0], nband)
                     tmp = rrf.resample_2d(tmp, dimensions, method='nearest')
+                    tmp[tmp2 == 0] = 100 # Apply nodata in cloud mask
+                    tmp2 = None
 
             if sensor.lower().find('ls8') and pansharp == True:
                 output= np.dstack((output, np.int16(rrf.resample_2d(tmp.copy(), dimensionsp, method='nearest'))))
