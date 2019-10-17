@@ -10,7 +10,7 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.43    10/2019
+Release:    V1.44    10/2019
 """
 
 def zonstat(inshp, inimg, attribut='id'):
@@ -22,29 +22,40 @@ def zonstat(inshp, inimg, attribut='id'):
     :param attribut:    attribute to use in shapefile table (default = 'id')
     :return:
     """
-    try:
-        img, _, _, _ = rpg.gdal2array(inimg)
-        uidi = np.unique(img)
+    # Check proj
+    epsg_shp = int(rpg.geoinfo(inshp, onlyepsg=True))
+    epsg_img = int(rpg.geoinfo(inimg, onlyepsg=True))
+    if epsg_shp != epsg_img:
+        layertmp = ogreproj(inshp, epsg_img, write=True)
+        inshp = inshp.replace('.shp', '_{0:d}.shp'.format(epsg_img))
 
-        mask = rpg.makemask(inshp, inimg, attribute=attribut)
-        uid = np.unique(mask)
+    # Read
+    img, _, _, _ = rpg.gdal2array(inimg)
+    uidi = np.unique(img)
 
-        output = pd.DataFrame(index = uid, columns = uidi)
-        for idmask in tqdm(uid, desc='Zonal Statistics', total=len(uid)):
-            index = np.flatnonzero(mask == idmask)
-            values = img[np.unravel_index(index, img.shape)]
+    mask = rpg.makemask(inshp, inimg, attribute=attribut)
+    uid = np.unique(mask)
 
-            uidval, uidvalc = np.unique(values, return_counts=True)
-            for idval, idvalc in zip(uidval, uidvalc):
-                output.at[idmask, idval] = idvalc
+    # Stats
+    output = pd.DataFrame(index = uid, columns = uidi)
+    for idmask in tqdm(uid, desc='Zonal Statistics', total=len(uid)):
+        index = np.flatnonzero(mask == idmask)
+        values = img[np.unravel_index(index, img.shape)]
 
-        output = output.fillna(value=0)
-        output.to_csv(inimg.replace('.tif', '_statz.csv'))
-        return None
+        uidval, uidvalc = np.unique(values, return_counts=True)
+        for idval, idvalc in zip(uidval, uidvalc):
+            output.at[idmask, idval] = idvalc
 
-    except:
-        logging.error(' ERROR in compute zonal statistics')
-        return None
+    output = output.fillna(value=0)
+    output.to_csv(inimg.replace('.tif', '_statz.csv'))
+
+    # Clean
+    if epsg_shp != epsg_img:
+        shptmp = glob.glob(inshp.replace('.shp', '*'))
+        for r in shptmp:
+            os.remove(r)
+
+    return None
 
 def checkproj(layer0, layer1):
     """
