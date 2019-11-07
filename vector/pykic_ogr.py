@@ -11,7 +11,7 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.5    11/2019
+Release:    V1.51    11/2019
 """
 
 def getbbox(input):
@@ -80,15 +80,18 @@ def zonstat(inshp, inimg, attribut='id'):
 
 def checkproj(layer0, layer1):
     """
-    Check if projections are the same
+    Check if projections are same OR same as layer1 (=EPSG)
     :param layer0:  path of shapefile 1
-    :param layer1:  path of shapefile 2
+    :param layer1:  path of shapefile 2 or EPSG (ex : '4326', str)
     :return:        booleen and EPSG of each layer
     """
     with fiona.open(layer0, 'r') as src0:
         proj0 = src0.crs['init']
-    with fiona.open(layer1, 'r') as src1:
-        proj1 = src1.crs['init']
+    if os.path.isdir(layer1):
+        with fiona.open(layer1, 'r') as src1:
+            proj1 = src1.crs['init']
+    else:
+        proj1 = 'epsg:{0:s}'.format(layer1)
 
     if proj0.lower() != proj1.lower():
         check = False
