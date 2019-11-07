@@ -4,14 +4,34 @@ import numpy as np
 import geopandas as gpd
 from fiona.crs import from_epsg
 from tqdm import tqdm
+from osgeo import ogr
 
 import raster.pykic_gdal as rpg
 
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.44    10/2019
+Release:    V1.5    11/2019
 """
+
+def getbbox(input):
+    """
+    Get bounding box of geometry
+    :param input:   Path of ogr file or ogr geometry (cf below)
+                            ogrl = ogr.Open(shp)
+                            input = ogrl.GetLayer()
+    :return:        Tuple : (xmin, xmax, ymin, ymax)
+    """
+    if type(input) is str:
+        ogrl = ogr.Open(input)
+        xmin, xmax, ymin, ymax = ogrl.GetLayer().GetExtent()
+    else:
+        try:
+            xmin, xmax, ymin, ymax= input.GetGeometryRef().GetEnvelope()
+        except:
+            xmin, xmax, ymin, ymax = input.GetExtent()
+    return (xmin, xmax, ymin, ymax)
+
 
 def zonstat(inshp, inimg, attribut='id'):
     """
@@ -37,7 +57,7 @@ def zonstat(inshp, inimg, attribut='id'):
     uid = np.unique(mask)
 
     # Stats
-    output = pd.DataFrame(index = uid, columns = uidi)
+    output = pd.DataFrame(index=uid, columns=uidi)
     for idmask in tqdm(uid, desc='Zonal Statistics', total=len(uid)):
         index = np.flatnonzero(mask == idmask)
         values = img[np.unravel_index(index, img.shape)]
@@ -56,6 +76,7 @@ def zonstat(inshp, inimg, attribut='id'):
             os.remove(r)
 
     return None
+
 
 def checkproj(layer0, layer1):
     """
