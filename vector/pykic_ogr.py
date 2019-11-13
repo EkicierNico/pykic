@@ -11,7 +11,7 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.51    11/2019
+Release:    V1.52    11/2019
 """
 
 def getbbox(input):
@@ -87,7 +87,7 @@ def checkproj(layer0, layer1):
     """
     with fiona.open(layer0, 'r') as src0:
         proj0 = src0.crs['init']
-    if os.path.isdir(layer1):
+    if os.path.isfile(layer1):
         with fiona.open(layer1, 'r') as src1:
             proj1 = src1.crs['init']
     else:
