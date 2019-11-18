@@ -11,7 +11,7 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.52    11/2019
+Release:    V1.53    11/2019
 """
 
 def getbbox(input):
@@ -85,19 +85,20 @@ def checkproj(layer0, layer1):
     :param layer1:  path of shapefile 2 or EPSG (ex : '4326', str)
     :return:        booleen and EPSG of each layer
     """
-    with fiona.open(layer0, 'r') as src0:
-        proj0 = src0.crs['init']
+    # with fiona.open(layer0, 'r') as src0:
+    #     proj0 = src0.crs['init']
+    proj0 = rpg.geoinfo(layer0, onlyepsg=True)
     if os.path.isfile(layer1):
-        with fiona.open(layer1, 'r') as src1:
-            proj1 = src1.crs['init']
+        proj1 = rpg.geoinfo(layer1, onlyepsg=True)
     else:
-        proj1 = 'epsg:{0:s}'.format(layer1)
+        proj1 = layer1
 
-    if proj0.lower() != proj1.lower():
+    if proj0 != proj1:
         check = False
     else:
         check = True
-
+    proj0 = 'epsg:{0:s}'.format(proj0)
+    proj1 = 'epsg:{0:s}'.format(proj1)
     return check, proj0, proj1
 
 
