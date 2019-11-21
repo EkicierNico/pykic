@@ -3,20 +3,31 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from scipy.signal import find_peaks
+from joblib import Parallel, delayed
+from tqdm import tqdm
 
 """
 Signal processing utilities
 Author:     Nicolas EKICIER
-Release:    V1.3    08/2019
-                - Changes for nanpercentile in outliers function
-            V1.2    07/2019
-                - Changes : fillnan function becomes fillnan_and_resample
-                - Add phen_met function
-                - Change beta to '100' in whittf
-            V1.1    06/2019
-                - Add fillnan function
-            V1.0    03/2019
+Release:    V1.4    11/2019
 """
+
+def smooth_compute(input, dim, njob=-1):
+    """
+    Compute whittaker smoothing in jobs
+    :param input:   array of vi signal
+    :param dim:     dimension of vector signal (0 = row / 1 = column)
+    :param njob:    number of jobs (refer to Joblib doc, default = -1)
+    :return:
+    """
+    def lambdf(x):
+        return whittf(fillnan_and_resample(x))
+    if dim == 0:
+        tw = Parallel(n_jobs=njob)(delayed(lambdf)(input[i, :]) for i in tqdm(range(0, input.shape[0]), desc='Whittaker Smoothing'))
+    elif dim == 1:
+        tw = Parallel(n_jobs=njob)(delayed(lambdf)(input[:, i]) for i in tqdm(range(0, input.shape[1]), desc='Whittaker Smoothing'))
+    return np.array(tw)
+
 
 def whittf(y, weight=None, beta=100, order=3):
     """
