@@ -11,8 +11,22 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.53    11/2019
+Release:    V1.54    11/2019
 """
+
+def add_field_id(input, field='nerid'):
+    """
+    Add an ID field in the attribute table of shapefile
+    :param input:   Path of shapefile
+    :param field:   Name of field (default = "nerid")
+    :return:        Path of new file
+    """
+    shp = gpd.read_file(input)
+    shp[field] = np.arange(1, shp.shape[0]+1)
+    name = input.replace('.shp', '_nerid.shp')
+    shp.to_file(name)
+    return name
+
 
 def getbbox(input):
     """
@@ -108,7 +122,7 @@ def ogreproj(player, oEPSG, write=False):
     :param layer:   Path of shapefile
     :param oEPSG:   EPSG value for destination (int)
     :param write:   if write, output is written on disk (same path of player with suffix)
-    :return:        Reprojected layer
+    :return:        Reprojected layer & path of file if write=True
     """
     layer = gpd.read_file(player)
 
@@ -120,8 +134,11 @@ def ogreproj(player, oEPSG, write=False):
     data_proj.crs = from_epsg(oEPSG) # Determine the CRS of the GeoDataFrame
 
     if write:
-        data_proj.to_file(player.replace('.shp', '_{0:d}.shp'.format(oEPSG)))
-    return data_proj
+        name = player.replace('.shp', '_{0:d}.shp'.format(oEPSG))
+        data_proj.to_file(name)
+        return data_proj, name
+    else:
+        return data_proj
 
 
 def sprocessing(layer1, layer2, method):
