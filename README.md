@@ -32,7 +32,7 @@
 
 ## 4. **Miscellaneous** : generic codes to make the job easier
 ### Functions in `signalproc.py`
-- **whittf** : Apply a Whittaker smoothing (weighted is needed)
+- **whittf** : Apply a Whittaker smoothing (weighted if needed)
 - **fillnan_and_resample** : Interpolation / resampling of vector data with nan values
 - **smooth_compute** : Compute Whittaker smoothing with multi-threading (array with some vector data)
 - **outliers** : Extract index and values of outliers in input

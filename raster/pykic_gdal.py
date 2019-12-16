@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.33   10/2019
+Release:    V1.4   12/2019
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -165,6 +165,24 @@ def geoinfo(filepath, onlyepsg=False):
         rwidth = raster.RasterXSize
         rheight = raster.RasterYSize
         return proj, (rwidth, rheight), transform
+
+
+def getextent(input):
+    """
+    Get the extent of a raster file
+    :param input:   path of ratser
+    :return:        tuple : (xmin, xmax, ymin, ymax)
+    """
+    proj, dim, tr = geoinfo(input)
+    xmin = tr[0]
+    ymax = tr[3]
+
+    # Decimals
+    nd = np.max([str(xmin)[::-1].find('.') + 1, str(ymax)[::-1].find('.') + 1])
+
+    xmax = round(xmin + tr[1] * dim[0], nd)
+    ymin = round(ymax + tr[-1] * dim[-1], nd)
+    return (xmin, xmax, ymin, ymax)
 
 
 def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8'):
