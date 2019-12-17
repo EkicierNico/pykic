@@ -7,6 +7,7 @@
 ### Functions in `pykic_gdal.py`
 - **gdal2array** : read RS dataset from one raw file or from folders --> S2, LS8, maja, sen2cor. In this case, cloud and no data mask are read.
 - **geoinfo** : Extract geo-informations from a raster or a geometry (only epsg for this type)
+- **getextent** : Get the extent of a raster
 - **array2tif** : Create a raster (.tif) from numpy array (only one band)
 - **makemask** : Build a mask array from ogr geometry
 - **resampling_and_reproject** : Resample and reproject a raster
