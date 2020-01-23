@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.4   12/2019
+Release:    V1.41   12/2019
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -193,7 +193,7 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8'):
     :param proj:        projection struct from gdal method
     :param dimensions:  dimensions of output (cols, rows)
     :param transform:   transform struct from gdal method
-    :param format:      {'uint8' --> default, 'uint16', 'int16'}
+    :param format:      {'uint8' --> default, 'uint16', 'int16', 'uint32', 'int32'}
     :return:
     """
     if format.lower() == 'uint8':
@@ -202,6 +202,10 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8'):
         gdt = gdal.GDT_UInt16
     elif format.lower() == 'int16':
         gdt = gdal.GDT_Int16
+    elif format.lower() == 'uint32':
+        gdt = gdal.GDT_UInt32
+    elif format.lower() == 'int32':
+        gdt = gdal.GDT_Int32
 
     outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], 1, gdt)
     outRaster.SetGeoTransform(transform)
