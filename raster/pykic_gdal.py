@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.41   12/2019
+Release:    V1.41   01/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
