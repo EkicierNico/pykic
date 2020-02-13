@@ -11,7 +11,7 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.55    02/2020
+Release:    V1.56    02/2020
 """
 
 def add_field_id(input, field='nerid'):
@@ -163,17 +163,17 @@ def sprocessing(layer1, layer2, method):
 
     # Check if projections are same
     if str_test == 2:
-        check, _, _ = checkproj(lay1, lay2)
+        check, _, _ = checkproj(layer1, layer2)
         if not check:
             logging.error('Warning : CRS are not the same')
             return None
     elif str_test == 1:
         if isinstance(lay1, gpd.GeoDataFrame):
             epsg = lay1.crs['init'].split(':')[-1]
-            check, _, _ = checkproj(lay2, epsg)
+            check, _, _ = checkproj(layer2, epsg)
         else:
             epsg = lay2.crs['init'].split(':')[-1]
-            check, _, _ = checkproj(lay1, epsg)
+            check, _, _ = checkproj(layer1, epsg)
         if not check:
             logging.error('Warning : CRS are not the same')
             return None
