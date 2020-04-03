@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.42   03/2020
+Release:    V1.5   04/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -21,7 +21,7 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
                             Example : .SAFE from S2
     :param nband:       number of band (only if filepath is not a folder)
                         if None, all bands are read
-    :param sensor:      {'S2', 'S2MAJA' (default), 'LS8MAJA', 'LS8', 'SEN2COR}
+    :param sensor:      {'S2', 'S2MAJA' (default), 'LS8MAJA', 'LS8', 'SEN2COR', 'WASP'}
     :param pansharp:    apply pan-sharpening (only possible with Landsat, default=False)
     :return:            array of raster, projection, dimensions, transform
     """
@@ -66,6 +66,10 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
             bands = [2, 3, 4, 8] # B,G,R,N
             ext = 'B0$_10m.jp2'
             cld = 'MSK_CLDPRB_20m.jp2'
+        elif sensor.lower() == 'wasp':
+            bands = [2, 3, 4, 8] # B,G,R,N
+            ext = 'FRC_B$.tif'
+            cld = 'FLG_R1.tif'
 
         # Define the workspace
         workdir = glob.glob(os.path.join(filepath, '**/*'+ext.replace('$', '2')), recursive=True)
@@ -99,7 +103,7 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
             gc.collect()
 
         # Cloud mask (valid = 0)
-        if sensor.lower().find('maja') >= 0 or sensor.lower() == 'ls8' or sensor.lower() == 'sen2cor':
+        if sensor.lower().find('maja') >= 0 or sensor.lower() == 'ls8' or sensor.lower() == 'sen2cor' or sensor.lower() == 'wasp':
             if sensor.lower().find('maja') >= 0:
                 pathc = glob.glob(os.path.join(workdir, 'MASKS', '*'+cld), recursive=False)
                 pathn = glob.glob(os.path.join(workdir, 'MASKS', '*'+nodata), recursive=False)
@@ -123,6 +127,12 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
                     tmp = rrf.resample_2d(tmp, dimensions, method='nearest')
                     tmp[tmp2 == 0] = 100 # Apply nodata in cloud mask
                     tmp2 = None
+            if sensor.lower() == 'wasp':
+                pathc = glob.glob(os.path.join(workdir, 'MASKS', '*'+cld), recursive=False)
+                if os.path.isfile(pathc[0]):
+                    tmp, _, _, _ = read(pathc[0], nband)
+                    tmp[tmp != 4] = 1
+                    tmp[tmp == 4] = 0
 
             if sensor.lower().find('ls8') and pansharp == True:
                 output= np.dstack((output, np.int16(rrf.resample_2d(tmp.copy(), dimensionsp, method='nearest'))))
