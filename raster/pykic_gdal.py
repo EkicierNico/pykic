@@ -10,12 +10,12 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.5   04/2020
+Release:    V1.6   04/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
     """
-    Read and transform a raster to array with bands stacking (Blue, Green, Red, NIR + CLOUDS)
+    Read and transform a raster to array with bands stacking (Blue, Green, Red, NIR + CLOUDS/NoData)
     :param filepath:    - path of file
                         - folder => only one final product per folder
                             Example : .SAFE from S2
@@ -195,15 +195,16 @@ def getextent(input):
     return (xmin, xmax, ymin, ymax)
 
 
-def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8'):
+def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', cog=False):
     """
-    Create a raster (.tif) from numpy array (only one band)
+    Create a raster (.tif) from numpy array (x, y, bands)
     :param newRasterfn: output path
     :param array:       numpy array (input)
     :param proj:        projection struct from gdal method
     :param dimensions:  dimensions of output (cols, rows)
     :param transform:   transform struct from gdal method
     :param format:      {'uint8' --> default, 'uint16', 'int16', 'uint32', 'int32'}
+    :param cog:         export as Cloud Optimized Geotiff format (COG)
     :return:
     """
     if format.lower() == 'uint8':
@@ -217,10 +218,33 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8'):
     elif format.lower() == 'int32':
         gdt = gdal.GDT_Int32
 
-    outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], 1, gdt, options=['COMPRESS=LZW'])
+    if cog == False:
+        if array.ndim == 2:
+            nbands = array.shape[-1]
+            outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], nbands, gdt,
+                                                             options=['COMPRESS=LZW'])
+            for i in range(nbands):
+                outband = outRaster.GetRasterBand(i+1).WriteArray(array[:, :, i])
+        else:
+            outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], 1, gdt,
+                                                             options=['COMPRESS=LZW'])
+            outband = outRaster.GetRasterBand(1).WriteArray(array)
+
+    else:
+        nbands = array.shape[-1]
+        outRasterTmp = gdal.GetDriverByName('MEM').Create('', dimensions[0], dimensions[1], nbands, gdt)
+        for i in range(nbands):
+            outband = array.GetRasterBand(i+1).WriteArray(array[:, :, i])
+
+        data = None
+        outRasterTmp.BuildOverviews("NEAREST", [2, 4, 8, 16, 32, 64])
+
+        outRaster = gdal.GetDriverByName('GTiff').CreateCopy(newRasterfn, outRasterTmp,
+                                      options=['COPY_SRC_OVERVIEWS=YES',
+                                               'TILED=YES',
+                                               'COMPRESS=LZW'])
+
     outRaster.SetGeoTransform(transform)
-    outband = outRaster.GetRasterBand(1)
-    outband.WriteArray(array)
     outRaster.SetProjection(proj)
 
     outband.FlushCache()

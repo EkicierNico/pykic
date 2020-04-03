@@ -5,10 +5,10 @@
 
 ## 1. **Raster** : raster utilities, some based on gdal/osgeo bindings
 ### Functions in `pykic_gdal.py`
-- **gdal2array** : read RS dataset from one raw file or from folders --> S2, LS8, maja, sen2cor. In this case, cloud and no data mask are read.
+- **gdal2array** : read RS dataset from one raw file or from folders --> S2, LS8, maja, sen2cor, wasp. In this case, cloud and no data mask are read.
 - **geoinfo** : Extract geo-informations from a raster or a geometry (only epsg for this type)
 - **getextent** : Get the extent of a raster
-- **array2tif** : Create a raster (.tif) from numpy array (only one band)
+- **array2tif** : Create a raster (.tif) from numpy array (COG format is possible)
 - **makemask** : Build a mask array from ogr geometry
 - **resampling_and_reproject** : Resample and reproject a raster
 ### Functions in `pyfmask.py`
