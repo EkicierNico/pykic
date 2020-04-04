@@ -234,7 +234,7 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
         nbands = array.shape[-1]
         outRasterTmp = gdal.GetDriverByName('MEM').Create('', dimensions[0], dimensions[1], nbands, gdt)
         for i in range(nbands):
-            outband = array.GetRasterBand(i+1).WriteArray(array[:, :, i])
+            outband = outRasterTmp.GetRasterBand(i+1).WriteArray(array[:, :, i])
 
         data = None
         outRasterTmp.BuildOverviews("NEAREST", [2, 4, 8, 16, 32, 64])
