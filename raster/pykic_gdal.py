@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.6   04/2020
+Release:    V1.61   04/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -204,7 +204,7 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
     :param dimensions:  dimensions of output (cols, rows)
     :param transform:   transform struct from gdal method
     :param format:      {'uint8' --> default, 'uint16', 'int16', 'uint32', 'int32'}
-    :param cog:         export as Cloud Optimized Geotiff format (COG)
+    :param cog:         export as Cloud Optimized Geotiff format (COG) - default = False
     :return:
     """
     if format.lower() == 'uint8':
@@ -236,13 +236,11 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
         for i in range(nbands):
             outband = outRasterTmp.GetRasterBand(i+1).WriteArray(array[:, :, i])
 
-        data = None
         outRasterTmp.BuildOverviews("NEAREST", [2, 4, 8, 16, 32, 64])
-
         outRaster = gdal.GetDriverByName('GTiff').CreateCopy(newRasterfn, outRasterTmp,
-                                      options=['COPY_SRC_OVERVIEWS=YES',
-                                               'TILED=YES',
-                                               'COMPRESS=LZW'])
+                                                             options=['COPY_SRC_OVERVIEWS=YES',
+                                                                      'TILED=YES',
+                                                                      'COMPRESS=LZW'])
 
     outRaster.SetGeoTransform(transform)
     outRaster.SetProjection(proj)
