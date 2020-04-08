@@ -9,19 +9,21 @@ from tqdm import tqdm
 """
 Signal processing utilities
 Author:     Nicolas EKICIER
-Release:    V1.4    11/2019
+Release:    V1.41    04/2020
 """
 
-def smooth_compute(input, dim, njob=-1):
+def smooth_compute(input, dim, njob=-1, cst=100, ord=3):
     """
     Compute whittaker smoothing in jobs
     :param input:   array of vi signal
     :param dim:     dimension of vector signal (0 = row / 1 = column)
     :param njob:    number of jobs (refer to Joblib doc, default = -1)
+    :param cst:     penalization (Whittaker parameter)
+    :param ord:     derivation order (Whittaker parameter)
     :return:
     """
     def lambdf(x):
-        return whittf(fillnan_and_resample(x))
+        return whittf(fillnan_and_resample(x), beta=cst, order=ord)
     if dim == 0:
         tw = Parallel(n_jobs=njob)(delayed(lambdf)(input[i, :]) for i in tqdm(range(0, input.shape[0]), desc='Whittaker Smoothing'))
     elif dim == 1:
