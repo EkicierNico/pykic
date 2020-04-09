@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.62   04/2020
+Release:    V1.63   04/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -245,8 +245,8 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
     outRaster.SetGeoTransform(transform)
     outRaster.SetProjection(proj)
 
-    outband.FlushCache()
-    outRaster = None
+    # outband.FlushCache()
+    # outRaster = None
     return None
 
 
