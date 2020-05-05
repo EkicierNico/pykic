@@ -10,6 +10,7 @@
 - **getextent** : Get the extent of a raster
 - **array2tif** : Create a raster (.tif) from numpy array (multi-bands / COG format is possible)
 - **makemask** : Build a mask array from ogr geometry
+- **valfromdot** : Extract values of a raster from coordinates
 - **resampling_and_reproject** : Resample and reproject a raster
 ### Functions in `pyfmask.py`
 - **applyfmask** : Apply Fmask on Landsat data

@@ -2,6 +2,7 @@ import os, glob, gc, random, string, osr
 from osgeo import gdal, gdal_array, ogr
 import pandas as pd
 import numpy as np
+from scipy.spatial import distance
 import logging
 
 import PIL.Image as pilim
@@ -10,7 +11,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.63   04/2020
+Release:    V1.7   05/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -311,6 +312,50 @@ def makemask(ogr_in, imgpath, attribute='ID', write=False):
 
     target_ds = None
     return maskarray
+
+
+def valfromdot(img, dim, trans, coord, win='unique'):
+    """
+    Extract values of raster from coordinates
+    :param img:     array (raster)
+    :param dim:     dimensions of raster (gdal struct)
+    :param trans:   transformation of ratser (gdal struct)
+    :param coord:   coordinates vector -> array (x, y)
+    :param win:     method to extract value (unique = one pixel --> default, square = median of 3x3 pixels)
+    :return:        values, coordinates index
+    """
+    # Build coordinates vector of raster (pixel center)
+    xi = np.arange(trans[0]+trans[1]/2, trans[0]+trans[1]*dim[0]+trans[1]/2, trans[1]).reshape((-1, 1))
+    yi = np.arange(trans[3]+trans[-1]/2, trans[3]+trans[-1]*dim[1]+trans[-1]/2, trans[-1]).reshape((-1, 1))
+
+    # Get index from distance
+    ixi = np.nanargmin(distance.cdist(xi, coord[:, 0].reshape((-1, 1)), metric='euclidean'), axis=0)
+    iyi = np.nanargmin(distance.cdist(yi, coord[:, 1].reshape((-1, 1)), metric='euclidean'), axis=0)
+
+    # Extract values
+    if win.lower() == 'unique':
+        values = img[iyi, ixi]
+    elif win.lower() == 'square':
+        values = np.array([])
+        xw = np.array([-1, -1, -1, 0, 0, 0, 1, 1, 1])
+        yw = np.array([-1, 0, 1, -1, 0, 1, -1, 0, 1])
+
+        for i, j in zip(ixi, iyi):
+            # Out of image
+            if i == 0 or j == 0:
+                if values.size == 0:
+                    values = np.nan
+                else:
+                    values = np.hstack((values, np.nan))
+                continue
+
+            xwt = xw.copy() + i
+            ywt = yw.copy() + j
+            if values.size == 0:
+                values = np.nanmedian(img[xwt.reshape((-1, 1)), ywt.reshape((-1, 1))])
+            else:
+                values = np.hstack((values, np.nanmedian(img[xwt.reshape((-1, 1)), ywt.reshape((-1, 1))])))
+    return values.reshape((-1, 1)), np.vstack((ixi, iyi)).transpose()
 
 
 def resample_and_reproject(image_in, dim, out_geo_transform, out_proj=None, mode='lanczos'):
