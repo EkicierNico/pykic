@@ -3,13 +3,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from scipy.signal import find_peaks
+from scipy.stats import linregress
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
 """
 Signal processing utilities
 Author:     Nicolas EKICIER
-Release:    V1.41    04/2020
+Release:    V1.5    05/2020
 """
 
 def smooth_compute(input, dim, njob=-1, cst=100, ord=3):
@@ -76,6 +77,34 @@ def fillnan_and_resample(y, x=None, method='linear'):
                     fill_value='extrapolate',
                     kind=method)
     return func(x)
+
+
+def regress(x, y, deg=1):
+    """
+    Compute regression (linear or polynomial) from 2 datasets
+    :param x:   x values (vector)
+    :param y:   y values (vector)
+    :param deg: degree of regression (default = 1 = linear)
+    :return:    sorted values from x [x, y, predict] (out)
+                regression coefficients (coeffs)
+                polynomial class (clpoly)
+                metrics (r2, mae, rmse)
+    """
+    # Regression
+    coeffs = np.polyfit(x, y, deg)
+    predict = np.polyval(coeffs, x)
+    clpoly = np.poly1d(coeffs)
+
+    # Metrics
+    diff = y - predict
+    mae = np.mean(abs(diff))
+    rmse = np.sqrt(np.mean(diff**2))
+    r2 = 1-(sum(diff**2)/sum((y-np.mean(y))**2))
+
+    # Sort
+    ind = np.argsort(x)
+    out = np.vstack((x[ind], y[ind], predict[ind])).transpose()
+    return out, coeffs, clpoly, (r2, mae, rmse)
 
 
 def outliers(input):
