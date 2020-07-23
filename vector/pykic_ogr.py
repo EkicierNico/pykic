@@ -11,7 +11,7 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.56    02/2020
+Release:    V1.57    07/2020
 """
 
 def add_field_id(input, field='nerid'):
@@ -99,8 +99,6 @@ def checkproj(layer0, layer1):
     :param layer1:  path of shapefile 2 or EPSG (ex : '4326', str)
     :return:        booleen and EPSG of each layer
     """
-    # with fiona.open(layer0, 'r') as src0:
-    #     proj0 = src0.crs['init']
     proj0 = rpg.geoinfo(layer0, onlyepsg=True)
     if os.path.isfile(layer1):
         proj1 = rpg.geoinfo(layer1, onlyepsg=True)
@@ -127,7 +125,7 @@ def ogreproj(player, oEPSG, write=False):
     layer = gpd.read_file(player)
 
     iEPSG = layer.crs # Get projection from input and print in console
-    print('Reprojection from {0:s} to epsg:{1:d}'.format(iEPSG['init'], oEPSG))
+    print('Reprojection from epsg:{0:d} to epsg:{1:d}'.format(iEPSG.to_epsg(), oEPSG))
 
     data_proj = layer.copy()
     data_proj = data_proj.to_crs(epsg=oEPSG) # Reproject the geometries by replacing the values with projected ones
@@ -169,10 +167,10 @@ def sprocessing(layer1, layer2, method):
             return None
     elif str_test == 1:
         if isinstance(lay1, gpd.GeoDataFrame):
-            epsg = lay1.crs['init'].split(':')[-1]
+            epsg = lay1.crs.to_epsg()
             check, _, _ = checkproj(layer2, epsg)
         else:
-            epsg = lay2.crs['init'].split(':')[-1]
+            epsg = lay2.crs.to_epsg()
             check, _, _ = checkproj(layer1, epsg)
         if not check:
             logging.error('Warning : CRS are not the same')
