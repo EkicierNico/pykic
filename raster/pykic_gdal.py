@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.8   07/2020
+Release:    V1.81   07/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -373,21 +373,17 @@ def imreproj(image_in, out_proj, out_dim, out_tr, mode='nearest'):
     elif mode.lower() == 'lanczos':
         mode_gdal = gdal.GRA_Lanczos
 
-    # Manage projection
+    # Extract EPSG for log
     epsg1 = osr.SpatialReference(wkt=image_in.GetProjection()).GetAttrValue('AUTHORITY', 1)
     epsg2 = osr.SpatialReference(wkt=out_proj).GetAttrValue('AUTHORITY', 1)
-
-    prj1 = osr.SpatialReference()
-    prj1.ImportFromEPSG(int(epsg1))
-    prj2 = osr.SpatialReference()
-    prj2.ImportFromEPSG(int(epsg2))
+    logging.warning(' Reprojection from epsg:{0:s} to epsg:{1:s}'.format(epsg1, epsg2))
 
     # Reproj
     dest = gdal.GetDriverByName('MEM').Create('', out_dim[0], out_dim[1],
                                               image_in.RasterCount, image_in.GetRasterBand(1).DataType)
     dest.SetGeoTransform(out_tr)
-    dest.SetProjection(prj2.ExportToWkt())
+    dest.SetProjection(out_proj)
 
-    res = gdal.ReprojectImage(image_in, dest, prj1.ExportToWkt(), prj2.ExportToWkt(), mode_gdal)
+    res = gdal.ReprojectImage(image_in, dest, image_in.GetProjection(), out_proj, mode_gdal)
     imr = gdal_array.DatasetReadAsArray(dest)
-    return imr, image_in.GetProjection(), out_dim, out_tr
+    return imr, out_proj, out_dim, out_tr
