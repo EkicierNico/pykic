@@ -1,9 +1,8 @@
-import os, glob, gc, random, string, osr
+import os, glob, gc, random, string, osr, logging
 from osgeo import gdal, gdal_array, ogr
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance
-import logging
 
 import PIL.Image as pilim
 import raster.resafilter as rrf
@@ -11,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.7   05/2020
+Release:    V1.8   07/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -37,8 +36,7 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
         # numbands = raster.RasterCount
 
         if nband is not None:
-            tmpband = raster.GetRasterBand(nband)
-            rasterArray = tmpband.ReadAsArray()
+            rasterArray = raster.GetRasterBand(nband).ReadAsArray()
         else:
             rasterArray = gdal_array.LoadFile(input)
         return rasterArray, proj, (rwidth, rheight), transform
@@ -245,9 +243,6 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
 
     outRaster.SetGeoTransform(transform)
     outRaster.SetProjection(proj)
-
-    # outband.FlushCache()
-    # outRaster = None
     return None
 
 
@@ -358,50 +353,41 @@ def valfromdot(img, dim, trans, coord, win='unique'):
     return values.reshape((-1, 1)), np.vstack((ixi, iyi)).transpose()
 
 
-def resample_and_reproject(image_in, dim, out_geo_transform, out_proj=None, mode='lanczos'):
+def imreproj(image_in, out_proj, out_dim, out_tr, mode='nearest'):
     """
-    Resample and reproject a raster
-
-    :param image_in:            input raster
-    :param dim:                 output dimensions (width, height)
-    :param out_geo_transform:   GeoTransform of the output raster
-    :param out_proj:            output projection (default to input projection)
-    :param mode:                interpolation mode ['bicubic', 'average', 'bilinear', 'lanczos' (default) or 'nearest']
-    :type image_in:             ``ogr.DataSet``
-    :type dim:                  tuple of int
-    :type out_geo_transform:    tuple of floats
-    :type out_proj:             string (ex : 'EPSG:4326')
-    :type mode:                 string
-    :return:                    the reprojected and resampled raster, None otherwise
-    :rtype: `                   `gdal.DataSet``
+    Reproject a raster in memory (without write on disk)
+    :param image_in:    input raster (GDAL object)
+    :param out_proj:    output projection (gdal struct)
+    :param out_dim:     output dimensions (gdal struct)
+    :param out_tr:      geoTransform of the output raster (gdal struct)
+    :param mode:        interpolation mode ['nearest' (default), 'bicubic', 'average', 'bilinear', 'lanczos']
+    :return:            reprojected raster in memory (RAM)
     """
-    if isinstance(image_in, str):
-        image_in = gdal.Open(image_in)
-    in_proj = image_in.GetProjection()
-
-    out_raster = gdal.GetDriverByName('MEM').Create("", dim[0], dim[1], image_in.RasterCount,
-                                                    image_in.GetRasterBand(1).DataType)
-    out_raster.SetGeoTransform(out_geo_transform)
-
-    mode_gdal = gdal.GRA_Lanczos
+    mode_gdal = gdal.GRA_NearestNeighbour
     if mode.lower() == 'average':
         mode_gdal = gdal.GRA_Average
     elif mode.lower() == 'bilinear':
         mode_gdal = gdal.GRA_Bilinear
     elif mode.lower() == 'bicubic':
         mode_gdal = gdal.GRA_Cubic
-    elif mode.lower() == 'nearest':
-        mode_gdal = gdal.GRA_NearestNeighbour
+    elif mode.lower() == 'lanczos':
+        mode_gdal = gdal.GRA_Lanczos
 
-    reproj_res = None
-    if out_proj is None:
-        out_raster.SetProjection(in_proj)
-        reproj_res = gdal.ReprojectImage(image_in, out_raster, None, None, mode_gdal)
-    else:
-        out_raster.SetProjection(out_proj)
-        reproj_res = gdal.ReprojectImage(image_in, out_raster, in_proj, out_proj, mode_gdal)
+    # Manage projection
+    epsg1 = osr.SpatialReference(wkt=image_in.GetProjection()).GetAttrValue('AUTHORITY', 1)
+    epsg2 = osr.SpatialReference(wkt=out_proj).GetAttrValue('AUTHORITY', 1)
 
-    if reproj_res != 0:
-        logging.error(" Error of reprojection/resampled")
-        return None
-    return out_raster
+    prj1 = osr.SpatialReference()
+    prj1.ImportFromEPSG(int(epsg1))
+    prj2 = osr.SpatialReference()
+    prj2.ImportFromEPSG(int(epsg2))
+
+    # Reproj
+    dest = gdal.GetDriverByName('MEM').Create('', out_dim[0], out_dim[1],
+                                              image_in.RasterCount, image_in.GetRasterBand(1).DataType)
+    dest.SetGeoTransform(out_tr)
+    dest.SetProjection(prj2.ExportToWkt())
+
+    res = gdal.ReprojectImage(image_in, dest, prj1.ExportToWkt(), prj2.ExportToWkt(), mode_gdal)
+    imr = gdal_array.DatasetReadAsArray(dest)
+    return imr, image_in.GetProjection(), out_dim, out_tr

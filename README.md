@@ -11,7 +11,7 @@
 - **array2tif** : Create a raster (.tif) from numpy array (multi-bands / COG format is possible)
 - **makemask** : Build a mask array from ogr geometry
 - **valfromdot** : Extract values of a raster from coordinates
-- **resampling_and_reproject** : Resample and reproject a raster
+- **imreproj** : Reproject a raster in memory, without write it on disk
 ### Functions in `pyfmask.py`
 - **applyfmask** : Apply Fmask on Landsat data
 ### Functions in `resafilter.py`
