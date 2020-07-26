@@ -1,5 +1,5 @@
-import os, glob, gc, random, string, osr, logging
-from osgeo import gdal, gdal_array, ogr
+import os, glob, gc, random, string, logging
+from osgeo import gdal, gdal_array, ogr, osr
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance
@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.81   07/2020
+Release:    V1.9   07/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
@@ -353,13 +353,11 @@ def valfromdot(img, dim, trans, coord, win='unique'):
     return values.reshape((-1, 1)), np.vstack((ixi, iyi)).transpose()
 
 
-def imreproj(image_in, out_proj, out_dim, out_tr, mode='nearest'):
+def imreproj(image_in, epsg_out, mode='nearest'):
     """
     Reproject a raster in memory (without write on disk)
-    :param image_in:    input raster (GDAL object)
-    :param out_proj:    output projection (gdal struct)
-    :param out_dim:     output dimensions (gdal struct)
-    :param out_tr:      geoTransform of the output raster (gdal struct)
+    :param image_in:    path of input raster
+    :param epsg_out:    output epsg (int)
     :param mode:        interpolation mode ['nearest' (default), 'bicubic', 'average', 'bilinear', 'lanczos']
     :return:            reprojected raster in memory (RAM)
     """
@@ -373,17 +371,37 @@ def imreproj(image_in, out_proj, out_dim, out_tr, mode='nearest'):
     elif mode.lower() == 'lanczos':
         mode_gdal = gdal.GRA_Lanczos
 
-    # Extract EPSG for log
-    epsg1 = osr.SpatialReference(wkt=image_in.GetProjection()).GetAttrValue('AUTHORITY', 1)
-    epsg2 = osr.SpatialReference(wkt=out_proj).GetAttrValue('AUTHORITY', 1)
-    logging.warning(' Reprojection from epsg:{0:s} to epsg:{1:s}'.format(epsg1, epsg2))
+    # Read source dataset
+    im = gdal.Open(image_in)
+    proj, dim, tr = geoinfo(image_in)
+    epsg_in = int(osr.SpatialReference(wkt=proj).GetAttrValue('AUTHORITY', 1))
+    logging.warning(' Reprojection from epsg:{0:d} to epsg:{1:d}'.format(epsg_in, epsg_out))
+
+    # Manage transform
+    source = osr.SpatialReference()
+    source.ImportFromEPSG(epsg_in)
+    source.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    target = osr.SpatialReference()
+    target.ImportFromEPSG(epsg_out)
+    target.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+
+    transform = osr.CoordinateTransformation(source, target)
+    ulx, uly, _ = transform.TransformPoint(tr[0], tr[3])
+    lrx, lry, _ = transform.TransformPoint(tr[0] + tr[1] * dim[0],
+                                             tr[3] + tr[5] * dim[1])
+
+    px2, _, _ = transform.TransformPoint(tr[0] + tr[1], tr[3])
+    res = abs(px2 - ulx)
 
     # Reproj
+    out_dim = (int((lrx - ulx) / res), int((uly - lry) / res))
     dest = gdal.GetDriverByName('MEM').Create('', out_dim[0], out_dim[1],
-                                              image_in.RasterCount, image_in.GetRasterBand(1).DataType)
-    dest.SetGeoTransform(out_tr)
-    dest.SetProjection(out_proj)
+                                              im.RasterCount, im.GetRasterBand(1).DataType)
 
-    res = gdal.ReprojectImage(image_in, dest, image_in.GetProjection(), out_proj, mode_gdal)
+    out_tr = (ulx, res, tr[2], uly, tr[4], -res)
+    dest.SetGeoTransform(out_tr)
+    dest.SetProjection(target.ExportToWkt())
+
+    _ = gdal.ReprojectImage(im, dest, source.ExportToWkt(), target.ExportToWkt(), mode_gdal)
     imr = gdal_array.DatasetReadAsArray(dest)
-    return imr, out_proj, out_dim, out_tr
+    return imr, target.ExportToWkt(), out_dim, out_tr
