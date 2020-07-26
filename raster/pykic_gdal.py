@@ -388,7 +388,7 @@ def imreproj(image_in, epsg_out, mode='nearest'):
     transform = osr.CoordinateTransformation(source, target)
     ulx, uly, _ = transform.TransformPoint(tr[0], tr[3])
     lrx, lry, _ = transform.TransformPoint(tr[0] + tr[1] * dim[0],
-                                             tr[3] + tr[5] * dim[1])
+                                           tr[3] + tr[5] * dim[1])
 
     px2, _, _ = transform.TransformPoint(tr[0] + tr[1], tr[3])
     res = abs(px2 - ulx)
