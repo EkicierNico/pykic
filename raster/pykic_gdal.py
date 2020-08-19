@@ -10,12 +10,13 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V1.9   07/2020
+Release:    V2.0   08/2020
 """
 
-def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
+def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False, subset=None):
     """
     Read and transform a raster to array with bands stacking (Blue, Green, Red, NIR + CLOUDS/NoData)
+    Possible to read only a subset
     :param filepath:    - path of file
                         - folder => only one final product per folder
                             Example : .SAFE from S2
@@ -23,9 +24,11 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
                         if None, all bands are read
     :param sensor:      {'S2', 'S2MAJA' (default), 'LS8MAJA', 'LS8', 'SEN2COR', 'WASP'}
     :param pansharp:    apply pan-sharpening (only possible with Landsat, default=False)
+    :param subset:      read only a subset of image
+                        tuple of bounding box (xmin, xmax, ymin, ymax) in native projection
     :return:            array of raster, projection, dimensions, transform
     """
-    def read(input, nband):
+    def read(input, nband, box):
         raster = gdal.Open(input)
 
         proj = raster.GetProjection()
@@ -33,12 +36,33 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
 
         rwidth = raster.RasterXSize
         rheight = raster.RasterYSize
-        # numbands = raster.RasterCount
+
+        if box is not None:
+            # Convert coordinates to index
+            inv_tr = gdal.InvGeoTransform(transform)
+            x0, y0 = gdal.ApplyGeoTransform(inv_tr, box[0], box[2])
+            x1, y1 = gdal.ApplyGeoTransform(inv_tr, box[1], box[3])
+            x0b, y0b = min(x0, x1), min(y0, y1)
+            x1b, y1b = max(x0, x1), max(y0, y1)
+
+            # New geotransform
+            rwidth = int(x1b-x0b)
+            rheight = int(y1b-y0b)
+            xmin = transform[0] + int(x0b) * transform[1]
+            ymax = transform[3] - int(y0b) * transform[1]
+            transform = (xmin, transform[1], transform[2], ymax, transform[4], transform[5])
 
         if nband is not None:
-            rasterArray = raster.GetRasterBand(nband).ReadAsArray()
+            if box is not None:
+                rasterArray = raster.GetRasterBand(nband).ReadAsArray(int(x0b), int(y0b), rwidth, rheight)
+            else:
+                rasterArray = raster.GetRasterBand(nband).ReadAsArray()
         else:
-            rasterArray = gdal_array.LoadFile(input)
+            if box is not None:
+                rasterArray = gdal_array.LoadFile(
+                    input, xoff=int(x0b), yoff=int(y0b), xsize=rwidth, ysize=rheight)
+            else:
+                rasterArray = gdal_array.LoadFile(input)
         return rasterArray, proj, (rwidth, rheight), transform
 
     if os.path.isdir(filepath):
@@ -80,13 +104,13 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
         # Pan-Sharpening (read panchromatic band)
         if sensor.lower().find('ls8') and pansharp == True:
             pathp = glob.glob(os.path.join(workdir, '*'+pan), recursive=False)
-            panchro, projp, dimensionsp, transformp = read(pathp[0], nband)
+            panchro, projp, dimensionsp, transformp = read(pathp[0], nband, subset)
 
         # Gdal read
         output = np.array([])
         for i in bands:
             pathf = glob.glob(os.path.join(workdir, '*'+ext.replace('$', str(i))), recursive=False)
-            tmp, proj, dimensions, transform = read(pathf[0], nband)
+            tmp, proj, dimensions, transform = read(pathf[0], nband, subset)
             if output.size == 0:
                 # Pan-Sharpening
                 if sensor.lower().find('ls8') and pansharp == True:
@@ -107,29 +131,29 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
                 pathc = glob.glob(os.path.join(workdir, 'MASKS', '*'+cld), recursive=False)
                 pathn = glob.glob(os.path.join(workdir, 'MASKS', '*'+nodata), recursive=False)
                 if os.path.isfile(pathc[0]):
-                    tmp, _, _, _ = read(pathc[0], nband)
-                    tmp2, _, _, _ = read(pathn[0], nband)
+                    tmp, _, _, _ = read(pathc[0], nband, subset)
+                    tmp2, _, _, _ = read(pathn[0], nband, subset)
                     tmp[tmp2 == 1] = 1 # Apply nodata in cloud mask
                     tmp2 = None
             elif sensor.lower() == 'ls8':
                 pathc = glob.glob(os.path.join(workdir, '*'+cld), recursive=False)
                 if os.path.isfile(pathc[0]):
-                    tmp, _, _, _ = read(pathc[0], nband)
+                    tmp, _, _, _ = read(pathc[0], nband, subset)
                     tmp[tmp != 1] = 5
                     tmp[tmp == 1] = 0
             elif sensor.lower() == 'sen2cor':
                 pathc = glob.glob(os.path.join(filepath, '**/*'+cld), recursive=True)
                 pathn = glob.glob(os.path.join(workdir, '*'+ext.replace('$', str(2))), recursive=False)
                 if os.path.isfile(pathc[0]):
-                    tmp, _, _, _ = read(pathc[0], nband)
-                    tmp2, _, _, _ = read(pathn[0], nband)
+                    tmp, _, _, _ = read(pathc[0], nband, subset)
+                    tmp2, _, _, _ = read(pathn[0], nband, subset)
                     tmp = rrf.resample_2d(tmp, dimensions, method='nearest')
                     tmp[tmp2 == 0] = 100 # Apply nodata in cloud mask
                     tmp2 = None
             if sensor.lower() == 'wasp':
                 pathc = glob.glob(os.path.join(workdir, 'MASKS', '*'+cld), recursive=False)
                 if os.path.isfile(pathc[0]):
-                    tmp, _, _, _ = read(pathc[0], nband)
+                    tmp, _, _, _ = read(pathc[0], nband, subset)
                     tmp[tmp != 4] = 1
                     tmp[tmp == 4] = 0
 
@@ -141,7 +165,7 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False):
             gc.collect()
 
     elif os.path.isfile(filepath):
-        output, proj, dimensions, transform = read(filepath, nband)
+        output, proj, dimensions, transform = read(filepath, nband, subset)
 
     # Return
     if sensor.lower().find('ls8') and pansharp == True:
