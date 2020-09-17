@@ -10,7 +10,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V2.0   08/2020
+Release:    V2.1   09/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False, subset=None):
@@ -226,7 +226,7 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
     :param proj:        projection struct from gdal method
     :param dimensions:  dimensions of output (cols, rows)
     :param transform:   transform struct from gdal method
-    :param format:      {'uint8' --> default, 'uint16', 'int16', 'uint32', 'int32'}
+    :param format:      {'uint8' --> default, 'uint16', 'int16', 'uint32', 'int32', 'float32'}
     :param cog:         export as Cloud Optimized Geotiff format (COG) - default = False
     :return:
     """
@@ -240,6 +240,8 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
         gdt = gdal.GDT_UInt32
     elif format.lower() == 'int32':
         gdt = gdal.GDT_Int32
+    elif format.lower() == 'float32':
+        gdt = gdal.GDT_Float32
 
     if cog == False:
         if array.ndim == 3:
