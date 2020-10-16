@@ -11,19 +11,20 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.57    07/2020
+Release:    V1.58    10/2020
 """
 
 def add_field_id(input, field='nerid'):
     """
-    Add an ID field in the attribute table of shapefile
-    :param input:   Path of shapefile
+    Add an ID field in the attribute table of vector file
+    :param input:   Path of file (any format supported by Fiona drivers)
     :param field:   Name of field (default = "nerid")
-    :return:        Path of new file
+    :return:        Path of new file (shapefile)
     """
+    ext = os.path.splitext(input)[-1]
     shp = gpd.read_file(input)
     shp[field] = np.arange(1, shp.shape[0]+1)
-    name = input.replace('.shp', '_nerid.shp')
+    name = input.replace(ext, '_nerid.shp')
     shp.to_file(name)
     return name
 
