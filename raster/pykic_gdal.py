@@ -1,16 +1,14 @@
 import os, glob, gc, random, string, logging
 from osgeo import gdal, gdal_array, ogr, osr
-import pandas as pd
 import numpy as np
 from scipy.spatial import distance
 
-import PIL.Image as pilim
 import raster.resafilter as rrf
 
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V2.1   09/2020
+Release:    V2.11   10/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False, subset=None):
@@ -221,6 +219,8 @@ def getextent(input):
 def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', cog=False):
     """
     Create a raster (.tif) from numpy array (x, y, bands)
+    Compression used : ZSTD Level_1 Pred_2 (All CPUS used)
+        Benchmarks: https://kokoalberti.com/articles/geotiff-compression-optimization-guide/
     :param newRasterfn: output path
     :param array:       numpy array (input)
     :param proj:        projection struct from gdal method
@@ -247,12 +247,18 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
         if array.ndim == 3:
             nbands = array.shape[-1]
             outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], nbands, gdt,
-                                                             options=['COMPRESS=LZW'])
+                                                             options=['COMPRESS=ZSTD',
+                                                                      'ZSTD_LEVEL=1',
+                                                                      'NUM_THREADS=ALL_CPUS',
+                                                                      'PREDICTOR=2'])
             for i in range(nbands):
                 outband = outRaster.GetRasterBand(i+1).WriteArray(array[:, :, i])
         else:
             outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], 1, gdt,
-                                                             options=['COMPRESS=LZW'])
+                                                             options=['COMPRESS=ZSTD',
+                                                                      'ZSTD_LEVEL=1',
+                                                                      'NUM_THREADS=ALL_CPUS',
+                                                                      'PREDICTOR=2'])
             outband = outRaster.GetRasterBand(1).WriteArray(array)
 
     else:
@@ -265,7 +271,10 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
         outRaster = gdal.GetDriverByName('GTiff').CreateCopy(newRasterfn, outRasterTmp,
                                                              options=['COPY_SRC_OVERVIEWS=YES',
                                                                       'TILED=YES',
-                                                                      'COMPRESS=LZW'])
+                                                                      'COMPRESS=ZSTD',
+                                                                      'ZSTD_LEVEL=1',
+                                                                      'NUM_THREADS=ALL_CPUS',
+                                                                      'PREDICTOR=2'])
 
     outRaster.SetGeoTransform(transform)
     outRaster.SetProjection(proj)

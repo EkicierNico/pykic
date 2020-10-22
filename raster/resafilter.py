@@ -4,11 +4,7 @@ import PIL.Image as pilim
 """
 Resampling & Filtering utilities
 Author:     Nicolas EKICIER
-Release:    V1.2    07/2019
-                - Add resample_2d function
-            V1.1    06/2019
-                - Add resizing method
-            V1.0    03/2019
+Release:    V1.21   10/2020
 """
 
 def pan_sharpen(input, sharp_param):

@@ -3,14 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from scipy.signal import find_peaks
-from scipy.stats import linregress
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
 """
 Signal processing utilities
 Author:     Nicolas EKICIER
-Release:    V1.5    05/2020
+Release:    V1.51    10/2020
 """
 
 def smooth_compute(input, dim, njob=-1, cst=100, ord=3):

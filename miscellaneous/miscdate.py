@@ -1,10 +1,9 @@
 import time, datetime, logging
-from datetime import date
 
 """
 Dates utilities
 Author:     Nicolas EKICIER
-Release:    V1.12   09/2019
+Release:    V1.13   10/2020
 """
 
 def dtoday(format='%Y%m%d'):
