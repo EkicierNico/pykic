@@ -8,7 +8,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V2.11   10/2020
+Release:    V2.12   10/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False, subset=None):
@@ -244,21 +244,16 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
         gdt = gdal.GDT_Float32
 
     if cog == False:
+        co = ['COMPRESS=ZSTD', 'ZSTD_LEVEL=1', 'NUM_THREADS=ALL_CPUS', 'PREDICTOR=2']
         if array.ndim == 3:
             nbands = array.shape[-1]
             outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], nbands, gdt,
-                                                             options=['COMPRESS=ZSTD',
-                                                                      'ZSTD_LEVEL=1',
-                                                                      'NUM_THREADS=ALL_CPUS',
-                                                                      'PREDICTOR=2'])
+                                                             options=co)
             for i in range(nbands):
                 outband = outRaster.GetRasterBand(i+1).WriteArray(array[:, :, i])
         else:
             outRaster = gdal.GetDriverByName('GTiff').Create(newRasterfn, dimensions[0], dimensions[1], 1, gdt,
-                                                             options=['COMPRESS=ZSTD',
-                                                                      'ZSTD_LEVEL=1',
-                                                                      'NUM_THREADS=ALL_CPUS',
-                                                                      'PREDICTOR=2'])
+                                                             options=co)
             outband = outRaster.GetRasterBand(1).WriteArray(array)
 
     else:
