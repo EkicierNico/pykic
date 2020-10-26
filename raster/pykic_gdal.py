@@ -8,7 +8,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V2.2   10/2020
+Release:    V2.21   10/2020
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False, subset=None):
@@ -216,11 +216,11 @@ def getextent(input):
     return (xmin, xmax, ymin, ymax)
 
 
-def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', cog=False, compress='zstd'):
+def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', cog=False, compress='lzw'):
     """
     Create a raster (.tif) from numpy array (x, y, bands)
     Compression used :  LZW Pred_2 (All CPUS used)
-                        ZSTD Level_1 Pred_2 (All CPUS used)
+                        ZSTD Level_1 Pred_2 (All CPUS used) -> better perfs but less compatibilities
         Benchmarks: https://kokoalberti.com/articles/geotiff-compression-optimization-guide/
     :param newRasterfn: output path
     :param array:       numpy array (input)
@@ -229,7 +229,7 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
     :param transform:   transform struct from gdal method
     :param format:      {'uint8' --> default, 'uint16', 'int16', 'uint32', 'int32', 'float32'}
     :param cog:         export as Cloud Optimized Geotiff format (COG) - default = False
-    :param compress:    compression method ('zstd' = default, 'lzw')
+    :param compress:    compression method ('lzw' = default, 'zstd')
     :return:
     """
     if format.lower() == 'uint8':
