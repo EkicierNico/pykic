@@ -5,13 +5,14 @@ import geopandas as gpd
 from fiona.crs import from_epsg
 from tqdm import tqdm
 from osgeo import ogr
+from joblib import Parallel, delayed
 
 import raster.pykic_gdal as rpg
 
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.58    10/2020
+Release:    V1.6    01/2021
 """
 
 def add_field_id(input, field='nerid'):
@@ -48,13 +49,14 @@ def getbbox(input):
     return (xmin, xmax, ymin, ymax)
 
 
-def zonstat(inshp, inimg, attribut='id'):
+def zonstat(inshp, inimg, attribut='id', njobs=-1):
     """
     Compute zonal statistics (count) on each polygon of shapefile from image
     Output will be in image folder with "_statz.csv" extent
     :param inshp:       path of shapefile
     :param inimg:       path of image
     :param attribut:    attribute to use in shapefile table (default = 'id')
+    :param njobs:       number of jobs to run in parallel (default = -1 = all cpus)
     :return:
     """
     # Check proj
@@ -72,16 +74,20 @@ def zonstat(inshp, inimg, attribut='id'):
     uid = np.unique(mask)
 
     # Stats
-    output = pd.DataFrame(index=uid, columns=uidi)
-    for idmask in tqdm(uid, desc='Zonal Statistics', total=len(uid)):
-        index = np.flatnonzero(mask == idmask)
-        values = img[np.unravel_index(index, img.shape)]
-
+    def lambdf(x):
+        values = img[np.nonzero(mask == x)]
         uidval, uidvalc = np.unique(values, return_counts=True)
-        for idval, idvalc in zip(uidval, uidvalc):
-            output.at[idmask, idval] = idvalc
 
-    output = output.fillna(value=0)
+        out_table = np.zeros((1, len(uidi)))
+        out_table[0, np.in1d(uidi, uidval, assume_unique=True)] = uidvalc / np.sum(uidvalc) * 100
+        return np.hstack((out_table, np.reshape(np.argmax(out_table), (1, 1))))
+
+    out = Parallel(n_jobs=njobs)(delayed(lambdf)(uid[i]) for i in tqdm(range(0, uid.shape[0]),
+                                                                      desc='Zonal statistics'))
+    out = np.array(out).squeeze()
+
+    output = pd.DataFrame(data=out[:, :-1], index=uid, columns=uidi)
+    output['classe_majoritaire'] = out[:, -1]
     output.to_csv(inimg.replace('.tif', '_statz.csv'))
 
     # Clean
