@@ -8,7 +8,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V2.21   10/2020
+Release:    V2.22   02/2021
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False, subset=None):
@@ -268,10 +268,14 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
         else:
             co = ['COPY_SRC_OVERVIEWS=YES', 'TILED=YES', 'COMPRESS=ZSTD', 'ZSTD_LEVEL=1', 'NUM_THREADS=ALL_CPUS', 'PREDICTOR=2']
 
-        nbands = array.shape[-1]
-        outRasterTmp = gdal.GetDriverByName('MEM').Create('', dimensions[0], dimensions[1], nbands, gdt)
-        for i in range(nbands):
-            outband = outRasterTmp.GetRasterBand(i+1).WriteArray(array[:, :, i])
+        if array.ndim == 3:
+            nbands = array.shape[-1]
+            outRasterTmp = gdal.GetDriverByName('MEM').Create('', dimensions[0], dimensions[1], nbands, gdt)
+            for i in range(nbands):
+                outband = outRasterTmp.GetRasterBand(i+1).WriteArray(array[:, :, i])
+        else:
+            outRasterTmp = gdal.GetDriverByName('MEM').Create('', dimensions[0], dimensions[1], 1, gdt)
+            outband = outRasterTmp.GetRasterBand(1).WriteArray(array)
 
         outRasterTmp.BuildOverviews("NEAREST", [2, 4, 8, 16, 32, 64])
         outRaster = gdal.GetDriverByName('GTiff').CreateCopy(newRasterfn, outRasterTmp,
