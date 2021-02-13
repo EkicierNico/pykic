@@ -1,6 +1,5 @@
-![Map](https://github.com/EkicierNico/pykic/blob/master/map.png "Map from Sentinel2 Timeserie")
+![Map](/docs/map.png "Map from Sentinel2 Timeserie")
 
-# pykic module
 # Python functions for a remote sensing application.
 
 ## 1. **Raster** : raster utilities, some based on gdal/osgeo bindings
