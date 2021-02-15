@@ -1,4 +1,4 @@
-![Map](./docs/map.png "Map from Sentinel2 Timeserie")
+![Map](./map.png "Map from Sentinel2 Timeserie")
 
 ## 1. **Raster** : raster utilities, some based on gdal/osgeo bindings
 ### Functions in `pykic_gdal.py`
