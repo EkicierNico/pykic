@@ -8,7 +8,7 @@ import raster.resafilter as rrf
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V2.22   02/2021
+Release:    V2.23   02/2021
 """
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False, subset=None):
@@ -219,8 +219,8 @@ def getextent(input):
 def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', cog=False, compress='lzw'):
     """
     Create a raster (.tif) from numpy array (x, y, bands)
-    Compression used :  LZW Pred_2 (All CPUS used)
-                        ZSTD Level_1 Pred_2 (All CPUS used) -> better perfs but less compatibilities
+    Compression used :  LZW Pred_2/3 (All CPUS used)
+                        ZSTD Level_1 Pred_2/3 (All CPUS used) -> better perfs but less compatibilities
         Benchmarks: https://kokoalberti.com/articles/geotiff-compression-optimization-guide/
     :param newRasterfn: output path
     :param array:       numpy array (input)
@@ -232,6 +232,7 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
     :param compress:    compression method ('lzw' = default, 'zstd')
     :return:
     """
+    val_pred = 2
     if format.lower() == 'uint8':
         gdt = gdal.GDT_Byte
     elif format.lower() == 'uint16':
@@ -244,12 +245,13 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
         gdt = gdal.GDT_Int32
     elif format.lower() == 'float32':
         gdt = gdal.GDT_Float32
+        val_pred = 3 # predictor = 3 with float32 format
 
     if cog == False:
         if compress.lower() == 'lzw':
-            co = ['COMPRESS=LZW', 'NUM_THREADS=ALL_CPUS', 'PREDICTOR=2']
+            co = ['COMPRESS=LZW', 'NUM_THREADS=ALL_CPUS', f'PREDICTOR={val_pred}']
         else:
-            co = ['COMPRESS=ZSTD', 'ZSTD_LEVEL=1', 'NUM_THREADS=ALL_CPUS', 'PREDICTOR=2']
+            co = ['COMPRESS=ZSTD', 'ZSTD_LEVEL=1', 'NUM_THREADS=ALL_CPUS', f'PREDICTOR={val_pred}']
 
         if array.ndim == 3:
             nbands = array.shape[-1]
@@ -264,9 +266,11 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
 
     else:
         if compress.lower() == 'lzw':
-            co = ['COPY_SRC_OVERVIEWS=YES', 'TILED=YES', 'COMPRESS=LZW', 'NUM_THREADS=ALL_CPUS', 'PREDICTOR=2']
+            co = ['COPY_SRC_OVERVIEWS=YES', 'TILED=YES',
+                  'COMPRESS=LZW', 'NUM_THREADS=ALL_CPUS', f'PREDICTOR={val_pred}']
         else:
-            co = ['COPY_SRC_OVERVIEWS=YES', 'TILED=YES', 'COMPRESS=ZSTD', 'ZSTD_LEVEL=1', 'NUM_THREADS=ALL_CPUS', 'PREDICTOR=2']
+            co = ['COPY_SRC_OVERVIEWS=YES', 'TILED=YES',
+                  'COMPRESS=ZSTD', 'ZSTD_LEVEL=1', 'NUM_THREADS=ALL_CPUS', f'PREDICTOR={val_pred}']
 
         if array.ndim == 3:
             nbands = array.shape[-1]
