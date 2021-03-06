@@ -12,7 +12,7 @@ import raster.pykic_gdal as rpg
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.6    01/2021
+Release:    V1.61   03/2021
 """
 
 def add_field_id(input, field='nerid'):
@@ -49,15 +49,16 @@ def getbbox(input):
     return (xmin, xmax, ymin, ymax)
 
 
-def zonstat(inshp, inimg, attribut='id', njobs=-1):
+def zonstat(inshp, inimg, attribut='id', njobs=-1, write=False):
     """
     Compute zonal statistics (count) on each polygon of shapefile from image
-    Output will be in image folder with "_statz.csv" extent
     :param inshp:       path of shapefile
     :param inimg:       path of image
     :param attribut:    attribute to use in shapefile table (default = 'id')
     :param njobs:       number of jobs to run in parallel (default = -1 = all cpus)
-    :return:
+    :param write:       True if you want to write the DataFrame on disk (default = False)
+                            CSV file in image folder with "_statz.csv" extent
+    :return:            DataFrame
     """
     # Check proj
     epsg_shp = int(rpg.geoinfo(inshp, onlyepsg=True))
@@ -87,16 +88,16 @@ def zonstat(inshp, inimg, attribut='id', njobs=-1):
     out = np.array(out).squeeze()
 
     output = pd.DataFrame(data=out[:, :-1], index=uid, columns=uidi)
-    output['classe_majoritaire'] = out[:, -1]
-    output.to_csv(inimg.replace('.tif', '_statz.csv'))
+    output['major_class'] = out[:, -1]
+    if write:
+        output.to_csv(inimg.replace('.tif', '_statz.csv'))
 
     # Clean
     if epsg_shp != epsg_img:
         shptmp = glob.glob(inshp.replace('.shp', '*'))
         for r in shptmp:
             os.remove(r)
-
-    return None
+    return output
 
 
 def checkproj(layer0, layer1):
