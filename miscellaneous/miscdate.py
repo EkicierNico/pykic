@@ -1,10 +1,11 @@
-import time, datetime, logging
-
 """
 Dates utilities
 Author:     Nicolas EKICIER
-Release:    V1.13   10/2020
+Release:    V1.14   03/2021
 """
+
+import time, datetime, logging
+
 
 def dtoday(format='%Y%m%d'):
     """

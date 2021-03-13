@@ -1,11 +1,12 @@
-import numpy as np
-import PIL.Image as pilim
-
 """
 Resampling & Filtering utilities
 Author:     Nicolas EKICIER
-Release:    V1.21   10/2020
+Release:    V1.22   03/2021
 """
+
+import numpy as np
+import PIL.Image as pilim
+
 
 def pan_sharpen(input, sharp_param):
     """

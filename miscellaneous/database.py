@@ -1,11 +1,12 @@
-import pandas as pd
-from sqlalchemy import create_engine
-
 """
 Database utilities
 Author:     Nicolas EKICIER
-Release:    V1    03/2019
+Release:    V1.01   03/2021
 """
+
+import pandas as pd
+from sqlalchemy import create_engine
+
 
 def buildproto(protocol, user, passwd, host, dbname):
     """

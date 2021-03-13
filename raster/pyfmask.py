@@ -1,18 +1,17 @@
-import os, glob, shutil
-import logging
-import miscellaneous.miscdate as mm
-
 """
 Function to apply Fmask to Landast 8
-
 Author:     Nicolas EKICIER
 Dependancies:   python-fmask (install from Conda)
                     'conda config --add channels conda-forge'
                     'conda install python-fmask'
 
-Release:    V1.O    06/2019
-                - Initialization
+Release:    V1.O1   03/2021
 """
+
+import os, glob, shutil
+import logging
+import miscellaneous.miscdate as mm # pykic module
+
 
 def applyfmask(directory):
     """

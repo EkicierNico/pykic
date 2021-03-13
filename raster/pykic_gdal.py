@@ -1,15 +1,13 @@
-import os, glob, gc, random, string, logging
-from osgeo import gdal, gdal_array, ogr, osr
-import numpy as np
-from scipy.spatial import distance
-
-import raster.resafilter as rrf
-
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V2.23   02/2021
+Release:    V2.24   03/2021
 """
+
+import os, glob, logging
+from osgeo import gdal, gdal_array, ogr, osr
+import numpy as np
+
 
 def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False, subset=None):
     """
@@ -26,6 +24,9 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False, subset=Non
                         tuple of bounding box (xmin, xmax, ymin, ymax) in native projection
     :return:            array of raster, projection, dimensions, transform
     """
+    import gc
+    import raster.resafilter as rrf  # pykic module
+
     def read(input, nband, box):
         raster = gdal.Open(input)
 
@@ -299,6 +300,8 @@ def makemask(ogr_in, imgpath, attribute='ID', write=False):
     :param write:       keep mask file on disk (default = False)
     :return maskarray:  mask (array)
     """
+    import random, string
+
     # Define dimensions and NoData value of new raster (= 0 in MEME method)
     rproj, dim, transform = geoinfo(imgpath)
 
@@ -363,6 +366,8 @@ def valfromdot(img, dim, trans, coord, win='unique'):
     :param win:     method to extract value (unique = one pixel --> default, square = median of 3x3 pixels)
     :return:        values, coordinates index
     """
+    from scipy.spatial import distance
+
     # Build coordinates vector of raster (pixel center)
     xi = np.arange(trans[0]+trans[1]/2, trans[0]+trans[1]*dim[0]+trans[1]/2, trans[1]).reshape((-1, 1))
     yi = np.arange(trans[3]+trans[-1]/2, trans[3]+trans[-1]*dim[1]+trans[-1]/2, trans[-1]).reshape((-1, 1))

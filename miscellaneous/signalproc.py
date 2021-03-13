@@ -1,16 +1,11 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
-from scipy.signal import find_peaks
-from joblib import Parallel, delayed
-from tqdm import tqdm
-
 """
 Signal processing utilities
 Author:     Nicolas EKICIER
-Release:    V1.51    10/2020
+Release:    V1.52   03/2021
 """
+
+import numpy as np
+
 
 def smooth_compute(input, dim, njob=-1, cst=100, ord=3):
     """
@@ -22,6 +17,9 @@ def smooth_compute(input, dim, njob=-1, cst=100, ord=3):
     :param ord:     derivation order (Whittaker parameter)
     :return:
     """
+    from joblib import Parallel, delayed
+    from tqdm import tqdm
+
     def lambdf(x):
         return whittf(fillnan_and_resample(x), beta=cst, order=ord)
     if dim == 0:
@@ -66,6 +64,8 @@ def fillnan_and_resample(y, x=None, method='linear'):
                         - 'zero', 'slinear', 'quadratic', 'cubic' = spline interpolation of zeroth, first, second or third order
     :return:        interpolated signal
     """
+    from scipy.interpolate import interp1d
+
     y = np.ravel(y)
     if x is None:
         x = np.arange(0, len(y))
@@ -130,6 +130,10 @@ def phen_met(y, plot=False):
     :param plot:    plot result (default = False)
     :return:        pandas Dataframe with metrics
     """
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from scipy.signal import find_peaks
+
     # Thresholds
     pct_sg = 0.2
     pct_eg = 0.8

@@ -1,14 +1,9 @@
-import os, glob
-import numpy as np
-
 """
 Vegetation index
 Author:     Nicolas EKICIER
-Release:    V1.1    07/2019
-                - Add NDWI index
-            V1.0    02/2019
-                - Initialization
+Release:    V1.11   03/2021
 """
+
 
 def ndwi(swir, green):
     """

@@ -1,19 +1,12 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-from skimage import exposure
-from sklearn.metrics import confusion_matrix
-from sklearn.utils.multiclass import unique_labels
-
-
 """
 Plotting utilities
 Author:     Nicolas EKICIER
-Release:    V1.1    07/2019
-                - Add plot_confusion_matrix function
-            V1.O    06/2019
-                - Initialization
+Release:    V1.11   03/2021
 """
+
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 def imadjust(input):
     '''
@@ -21,6 +14,8 @@ def imadjust(input):
     :param input:   image (numpy array)
     :return:        rescale image
     '''
+    from skimage import exposure
+
     p3, p97 = np.percentile(input, (3, 97))
     if p3 == 0:
         ip3 = 4
@@ -48,6 +43,10 @@ def plot_confusion_matrix(y_true, y_pred,
                         type = string (default = YlGn)
     :return:
     """
+    import pandas as pd
+    from sklearn.metrics import confusion_matrix
+    from sklearn.utils.multiclass import unique_labels
+
     if not title:
         if normalize:
             title = 'Normalized confusion matrix'
