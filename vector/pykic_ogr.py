@@ -1,19 +1,14 @@
-import os, glob, fiona, logging
-import pandas as pd
-import numpy as np
-import geopandas as gpd
-from fiona.crs import from_epsg
-from tqdm import tqdm
-from osgeo import ogr
-from joblib import Parallel, delayed
-
-import raster.pykic_gdal as rpg
-
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.61   03/2021
+Release:    V1.7    03/2021
 """
+
+import os, glob, logging
+import numpy as np
+import geopandas as gpd
+import raster.pykic_gdal as rpg # pykic module
+
 
 def add_field_id(input, field='nerid'):
     """
@@ -38,6 +33,8 @@ def getbbox(input):
                             input = ogrl.GetLayer()
     :return:        Tuple : (xmin, xmax, ymin, ymax)
     """
+    from osgeo import ogr
+
     if type(input) is str:
         ogrl = ogr.Open(input)
         xmin, xmax, ymin, ymax = ogrl.GetLayer().GetExtent()
@@ -60,6 +57,10 @@ def zonstat(inshp, inimg, attribut='id', njobs=-1, write=False):
                             CSV file in image folder with "_statz.csv" extent
     :return:            DataFrame
     """
+    import pandas as pd
+    from tqdm import tqdm
+    from joblib import Parallel, delayed
+
     # Check proj
     epsg_shp = int(rpg.geoinfo(inshp, onlyepsg=True))
     epsg_img = int(rpg.geoinfo(inimg, onlyepsg=True))
@@ -130,8 +131,9 @@ def ogreproj(player, oEPSG, write=False):
     :param write:   if write, output is written on disk (same path of player with suffix)
     :return:        Reprojected layer & path of file if write=True
     """
-    layer = gpd.read_file(player)
+    from fiona.crs import from_epsg
 
+    layer = gpd.read_file(player)
     iEPSG = layer.crs # Get projection from input and print in console
     print('Reprojection from epsg:{0:d} to epsg:{1:d}'.format(iEPSG.to_epsg(), oEPSG))
 
@@ -245,3 +247,24 @@ def distm(lon, lat, units='km'):
         logging.error('Warning : output format is not recognized, use default')
         d = s2 * radius / 1000
     return d
+
+
+def convert_coord(x, y, from_epsg, to_epsg):
+    """
+    Convert coordinates from an EPSG to another.
+    :param x:           longitude (numpy array)
+    :param y:           latitude (numpy array)
+    :param from_epsg:   input epsg (int)
+    :param to_epsg:     epsg target (int)
+    :return:            dataframe (columns : x, y, to_x, to_y)
+    """
+    import pandas as pd
+    from pyproj import Transformer
+
+    transformer = Transformer.from_crs(from_epsg, to_epsg)
+    to_xy = np.array(transformer.transform(x, y))
+    output = pd.DataFrame({f'x_{from_epsg}': x,
+                           f'y_{from_epsg}': y,
+                           f'x_{to_epsg}': to_xy[0, :],
+                           f'y_{to_epsg}': to_xy[1, :]})
+    return output

@@ -27,6 +27,7 @@
 - **getbbox** : Get the bounding box of geometry (extent)
 - **distm** : Geodesic distance between dots (degrees units)
 - **add_field_id** : Add an ID field in the attribute table of a layer
+- **convert_coord** : Convert coordinates from an EPSG to another
 
 ## 3. **SMAC** : atmospheric correction from smac algorithm, developed by CESBIO
 - _smac.py_ : apply atmospheric correction SMAC
