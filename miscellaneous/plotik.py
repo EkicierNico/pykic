@@ -1,7 +1,7 @@
 """
 Plotting utilities
 Author:     Nicolas EKICIER
-Release:    V1.11   03/2021
+Release:    V1.12   03/2021
 """
 
 import numpy as np
@@ -16,11 +16,11 @@ def imadjust(input):
     '''
     from skimage import exposure
 
-    p3, p97 = np.percentile(input, (3, 97))
+    p3, p97 = np.nanpercentile(input, (3, 97))
     if p3 == 0:
         ip3 = 4
         while p3 == 0:
-            p3 = np.percentile(input, ip3)
+            p3 = np.nanpercentile(input, ip3)
             ip3 = ip3 + 1
     img_rescale = exposure.rescale_intensity(input, in_range=(p3, p97))
     return img_rescale
