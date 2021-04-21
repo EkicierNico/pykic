@@ -1,7 +1,7 @@
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V2.24   03/2021
+Release:    V2.25   04/2021
 """
 
 import os, glob, logging
@@ -175,16 +175,21 @@ def gdal2array(filepath, nband=None, sensor='S2MAJA', pansharp=False, subset=Non
 
 def geoinfo(filepath, onlyepsg=False):
     """
-    Extract structure geoinfo from gdal
+    Extract structure geoinfo from gdal / geopandas
     :param filepath:    path of raster file (ogr file only possible with onlyepsg=True)
     :param onlyepsg:    to extract only the EPSG code
     :return:            proj, dimensions, transform OR EPSG
     """
+    import geopandas as gpd
+
     if onlyepsg == True:
         try:
             source_ds = ogr.Open(filepath)
             layer = source_ds.GetLayer().GetSpatialRef()
             epsg = layer.GetAuthorityCode(None)
+            if epsg == None:
+                layer = gpd.read_file(filepath)
+                epsg = str(layer.crs.to_epsg())
         except:
             raster = gdal.Open(filepath)
             epsg = osr.SpatialReference(wkt=raster.GetProjection()).GetAttrValue('AUTHORITY', 1)
