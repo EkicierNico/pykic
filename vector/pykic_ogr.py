@@ -1,7 +1,7 @@
 """
 OGR utilities
 Author:     Nicolas EKICIER
-Release:    V1.7    03/2021
+Release:    V1.71   07/2021
 """
 
 import os, glob, logging
@@ -261,7 +261,7 @@ def convert_coord(x, y, from_epsg, to_epsg):
     import pandas as pd
     from pyproj import Transformer
 
-    transformer = Transformer.from_crs(from_epsg, to_epsg)
+    transformer = Transformer.from_crs(from_epsg, to_epsg, always_xy=True)
     to_xy = np.array(transformer.transform(x, y))
     output = pd.DataFrame({f'x_{from_epsg}': x,
                            f'y_{from_epsg}': y,
