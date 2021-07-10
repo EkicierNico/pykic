@@ -6,7 +6,6 @@ Release:    V2.26   07/2021
 
 import os, glob, logging
 import sys
-
 from osgeo import gdal, gdal_array, ogr, osr
 import numpy as np
 
