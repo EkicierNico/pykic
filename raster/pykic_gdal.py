@@ -1,10 +1,12 @@
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V2.25   04/2021
+Release:    V2.26   07/2021
 """
 
 import os, glob, logging
+import sys
+
 from osgeo import gdal, gdal_array, ogr, osr
 import numpy as np
 
@@ -222,7 +224,7 @@ def getextent(input):
     return (xmin, xmax, ymin, ymax)
 
 
-def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', cog=False, compress='lzw'):
+def array2tif(newRasterfn, array, proj, dimensions, transform, format=None, cog=False, compress='lzw'):
     """
     Create a raster (.tif) from numpy array (x, y, bands)
     Compression used :  LZW Pred_2/3 (All CPUS used)
@@ -233,25 +235,31 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
     :param proj:        projection struct from gdal method
     :param dimensions:  dimensions of output (cols, rows)
     :param transform:   transform struct from gdal method
-    :param format:      {'uint8' --> default, 'uint16', 'int16', 'uint32', 'int32', 'float32'}
+    :param format:      default = None = Take the type of array
+                        possible to force it : {'uint8', 'uint16', 'int16', 'uint32', 'int32', 'float32'}
     :param cog:         export as Cloud Optimized Geotiff format (COG) - default = False
     :param compress:    compression method ('lzw' = default, 'zstd')
     :return:
     """
     val_pred = 2
+    gdt = None
+    if format == None:
+        format = str(array.dtype)
     if format.lower() == 'uint8':
         gdt = gdal.GDT_Byte
     elif format.lower() == 'uint16':
         gdt = gdal.GDT_UInt16
     elif format.lower() == 'int16':
         gdt = gdal.GDT_Int16
-    elif format.lower() == 'uint32':
+    elif format.lower() == 'uint32' or format.lower() == 'uint64':
         gdt = gdal.GDT_UInt32
-    elif format.lower() == 'int32':
+    elif format.lower() == 'int32' or format.lower() == 'int64':
         gdt = gdal.GDT_Int32
-    elif format.lower() == 'float32':
+    elif format.lower() == 'float32' or format.lower() == 'float64':
         gdt = gdal.GDT_Float32
         val_pred = 3 # predictor = 3 with float32 format
+    if gdt == None:
+        sys.exit('Format not recognized, please check it. Exit.')
 
     if cog == False:
         if compress.lower() == 'lzw':
@@ -287,7 +295,7 @@ def array2tif(newRasterfn, array, proj, dimensions, transform, format='uint8', c
             outRasterTmp = gdal.GetDriverByName('MEM').Create('', dimensions[0], dimensions[1], 1, gdt)
             outband = outRasterTmp.GetRasterBand(1).WriteArray(array)
 
-        outRasterTmp.BuildOverviews("NEAREST", [2, 4, 8, 16, 32, 64])
+        outRasterTmp.BuildOverviews("NEAREST", [2, 4, 8, 16, 32, 64, 128])
         outRaster = gdal.GetDriverByName('GTiff').CreateCopy(newRasterfn, outRasterTmp,
                                                              options=co)
 
