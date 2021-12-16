@@ -1,7 +1,7 @@
 """
 Signal processing utilities
 Author:     Nicolas EKICIER
-Release:    V1.52   03/2021
+Release:    V1.53   12/2021
 """
 
 import numpy as np
@@ -52,28 +52,33 @@ def whittf(y, weight=None, beta=100, order=3):
     return yf
 
 
-def fillnan_and_resample(y, x=None, method='linear'):
+def fillnan_and_resample(y, method='linear', bounds='nan'):
     """
     Interpolation of vector data with nan values
-    Extrema are extrapolated
+    Bounds can be extrapolated if needed
     :param y:       vector data
-    :param x:       vector of x positions to resampling (Default = None)
     :param method:  interpolation method
                         - 'linear'  default
                         - 'nearest'
                         - 'zero', 'slinear', 'quadratic', 'cubic' = spline interpolation of zeroth, first, second or third order
+    :param bounds:  behaviour at bounds (fill value)
+                        - 'nan' = default
+                        - float or int value
+                        - 'extrapolate'
     :return:        interpolated signal
     """
     from scipy.interpolate import interp1d
+    if isinstance(bounds, str):
+        bounds = bounds.lower()
 
     y = np.ravel(y)
-    if x is None:
-        x = np.arange(0, len(y))
+    x = np.arange(0, len(y))
 
     igood = np.where(np.isfinite(y))
     func = interp1d(np.ravel(igood),
-                    np.ravel(y[igood]), # fndvi.iloc[np.ravel(igood), fndvi.columns.get_loc(f)]
-                    fill_value='extrapolate',
+                    np.ravel(y[igood]),
+                    bounds_error=False,
+                    fill_value=bounds,
                     kind=method)
     return func(x)
 
