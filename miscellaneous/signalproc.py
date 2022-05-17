@@ -1,17 +1,16 @@
 """
 Signal processing utilities
 Author:     Nicolas EKICIER
-Release:    V1.53   12/2021
+Release:    V1.54   05/2022
 """
 
 import numpy as np
 
 
-def smooth_compute(input, dim, njob=-1, cst=100, ord=3):
+def smooth_compute(input, njob=-1, cst=100, ord=3):
     """
     Compute whittaker smoothing in jobs
-    :param input:   array of vi signal
-    :param dim:     dimension of vector signal (0 = row / 1 = column)
+    :param input:   array of Times Series (x = obs, y = var)
     :param njob:    number of jobs (refer to Joblib doc, default = -1)
     :param cst:     penalization (Whittaker parameter)
     :param ord:     derivation order (Whittaker parameter)
@@ -22,22 +21,30 @@ def smooth_compute(input, dim, njob=-1, cst=100, ord=3):
 
     def lambdf(x):
         return whittf(fillnan_and_resample(x), beta=cst, order=ord)
-    if dim == 0:
-        tw = Parallel(n_jobs=njob)(delayed(lambdf)(input[i, :]) for i in tqdm(range(0, input.shape[0]), desc='Whittaker Smoothing'))
-    elif dim == 1:
-        tw = Parallel(n_jobs=njob)(delayed(lambdf)(input[:, i]) for i in tqdm(range(0, input.shape[1]), desc='Whittaker Smoothing'))
+    tw = Parallel(n_jobs=njob)(delayed(lambdf)(input[i,:]) for i in tqdm(range(input.shape[0]),
+                                                                         desc='Smooth Computing'))
     return np.array(tw)
 
 
 def whittf(y, weight=None, beta=100, order=3):
     """
     Weighted Whittaker smoothing
-    :param y:       vector data (signal)
+    :param y:       1D vector data (signal)
+                    if NaNs, they are eliminated automatically (best way = interpolate before)
     :param weight:  weights of each sample (one by default)
     :param beta:    penalization parameter (> 0)
     :param order:   derivation order
     :return:        smooth signal
     """
+    output = np.full((len(y)), fill_value=np.nan)
+    igood = np.flatnonzero(np.isfinite(y))
+
+    # Manage NaNs
+    inan = np.flatnonzero(np.isnan(y))
+    if inan.size > 0:
+        y = np.delete(y, inan)
+
+    # Smoother
     m = len(y)
     speye = np.eye(m)
     p = np.diff(speye, n=order)
@@ -47,9 +54,12 @@ def whittf(y, weight=None, beta=100, order=3):
     else:
         diag = np.diag(weight)
 
-    pp = np.transpose(p)
+    pp = p.transpose()
     yf = np.linalg.solve(diag + beta*np.dot(p, pp), np.dot(diag, y))
-    return yf
+
+    # Export
+    output[igood] = yf
+    return output
 
 
 def fillnan_and_resample(y, method='linear', bounds='nan'):
