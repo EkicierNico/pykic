@@ -1,11 +1,13 @@
 """
 RASTER utilities
 Author:     Nicolas EKICIER
-Release:    V2.26   07/2021
+Release:    V2.27   02/2024
+
+Dependancies :
+    - pyogrio library (only for geoinfo func when "onlyepsg" is needed)
 """
 
-import os, glob, logging
-import sys
+import os, glob, logging, sys
 from osgeo import gdal, gdal_array, ogr, osr
 import numpy as np
 
@@ -181,16 +183,12 @@ def geoinfo(filepath, onlyepsg=False):
     :param onlyepsg:    to extract only the EPSG code
     :return:            proj, dimensions, transform OR EPSG
     """
-    import geopandas as gpd
+    from pyogrio import read_info
 
     if onlyepsg == True:
         try:
-            source_ds = ogr.Open(filepath)
-            layer = source_ds.GetLayer().GetSpatialRef()
-            epsg = layer.GetAuthorityCode(None)
-            if epsg == None:
-                layer = gpd.read_file(filepath)
-                epsg = str(layer.crs.to_epsg())
+            metadatas = read_info(filepath)
+            epsg = metadatas['crs'].split(':')[-1]
         except:
             raster = gdal.Open(filepath)
             epsg = osr.SpatialReference(wkt=raster.GetProjection()).GetAttrValue('AUTHORITY', 1)
